@@ -9,7 +9,7 @@ import type {
   Testimonial,
 } from "@/lib/types";
 import MenuClient from "./CartClient";
-import ReviewForm from "./ReviewForm";
+import ReviewsSection from "./ReviewsSection";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -47,7 +47,7 @@ export default async function MenuPage({ params, searchParams }: PageProps) {
   if (!business) notFound();
 
   const supabase = getSupabase();
-  const [categoriesRes, itemsRes, testimonialsRes] = await Promise.all([
+  const [categoriesRes, itemsRes, testimonialsRes, statsRes] = await Promise.all([
     supabase
       .from("categories")
       .select("*")
@@ -65,11 +65,27 @@ export default async function MenuPage({ params, searchParams }: PageProps) {
       .eq("status", "approved")
       .order("created_at", { ascending: false })
       .limit(5),
+    // True totals across ALL approved reviews (view: business_review_stats)
+    supabase
+      .from("business_review_stats")
+      .select("review_count, avg_rating")
+      .eq("business_id", business.id)
+      .maybeSingle(),
   ]);
 
   const categories = (categoriesRes.data ?? []) as Category[];
   const items = (itemsRes.data ?? []) as MenuItem[];
   const testimonials = (testimonialsRes.data ?? []) as Testimonial[];
+
+  // Fall back to the fetched page if the stats view isn't available.
+  const stats = statsRes.data as { review_count: number; avg_rating: number } | null;
+  const totalCount = stats?.review_count ?? testimonials.length;
+  const avgRating =
+    stats?.avg_rating != null
+      ? Number(stats.avg_rating)
+      : testimonials.length > 0
+        ? testimonials.reduce((sum, t) => sum + t.rating, 0) / testimonials.length
+        : 0;
 
   const sections: MenuSection[] = categories
     .map((c) => ({
@@ -99,66 +115,15 @@ export default async function MenuPage({ params, searchParams }: PageProps) {
         sections={sections}
         tableFromUrl={table}
       />
-      <TestimonialsSection testimonials={testimonials} businessId={business.id} />
+      <ReviewsSection
+        businessId={business.id}
+        initialReviews={testimonials}
+        totalCount={totalCount}
+        avgRating={avgRating}
+      />
       <footer className="px-4 pb-32 pt-8 text-center text-xs text-zinc-400">
         Powered by Snapdesk
       </footer>
     </div>
-  );
-}
-
-function Stars({ rating }: { rating: number }) {
-  return (
-    <span aria-label={`${rating} out of 5 stars`} className="text-amber-500">
-      {"★".repeat(rating)}
-      <span className="text-zinc-300">{"★".repeat(5 - rating)}</span>
-    </span>
-  );
-}
-
-function TestimonialsSection({
-  testimonials,
-  businessId,
-}: {
-  testimonials: Testimonial[];
-  businessId: string;
-}) {
-  const average =
-    testimonials.length > 0
-      ? testimonials.reduce((sum, t) => sum + t.rating, 0) / testimonials.length
-      : 0;
-
-  return (
-    <section className="border-t border-zinc-100 px-4 pt-6">
-      <h2 className="text-base font-semibold">What customers say</h2>
-      {testimonials.length > 0 ? (
-        <>
-          <p className="mt-1 text-sm text-zinc-600">
-            <Stars rating={Math.round(average)} />{" "}
-            <span className="font-medium">{average.toFixed(1)}</span> ·{" "}
-            {testimonials.length} review{testimonials.length > 1 ? "s" : ""}
-          </p>
-          <div className="mt-3 flex flex-col gap-3">
-            {testimonials.map((t) => (
-              <blockquote
-                key={t.id}
-                className="rounded-xl border border-zinc-100 bg-zinc-50 p-3"
-              >
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{t.customer_name}</span>
-                  <Stars rating={t.rating} />
-                </div>
-                <p className="mt-1 text-sm text-zinc-600">{t.text}</p>
-              </blockquote>
-            ))}
-          </div>
-        </>
-      ) : (
-        <p className="mt-1 text-sm text-zinc-500">
-          No reviews yet — be the first!
-        </p>
-      )}
-      <ReviewForm businessId={businessId} />
-    </section>
   );
 }

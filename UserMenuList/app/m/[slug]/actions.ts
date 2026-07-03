@@ -1,6 +1,27 @@
 "use server";
 
 import { getSupabase } from "@/lib/supabase";
+import type { Testimonial } from "@/lib/types";
+
+const REVIEWS_PAGE_SIZE = 10;
+
+/** Next batch of approved reviews, newest first. Used by "Show more". */
+export async function loadMoreReviews(
+  businessId: string,
+  offset: number
+): Promise<{ ok: true; reviews: Testimonial[] } | { ok: false; error: string }> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("testimonials")
+    .select("*")
+    .eq("business_id", businessId)
+    .eq("status", "approved")
+    .order("created_at", { ascending: false })
+    .range(offset, offset + REVIEWS_PAGE_SIZE - 1);
+
+  if (error) return { ok: false, error: "Could not load more reviews." };
+  return { ok: true, reviews: (data ?? []) as Testimonial[] };
+}
 
 export type ReviewInput = {
   name: string;
