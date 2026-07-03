@@ -1,17 +1,45 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Pencil, Plus, Trash2, UtensilsCrossed } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import VegDot from "@/components/dashboard/VegDot";
 import type { Category, MenuItem } from "@/lib/types";
+import type { ActionResult } from "@/lib/action-result";
 import {
   addCategory,
-  addItem,
   deleteCategory,
   deleteItem,
   renameCategory,
   toggleAvailability,
-  updateItem,
-  type ItemInput,
 } from "./actions";
+import ItemDialog from "./ItemDialog";
 
 type Props = {
   businessId: string;
@@ -20,321 +48,300 @@ type Props = {
   items: MenuItem[];
 };
 
-const emptyItem: ItemInput = {
-  name: "",
-  description: "",
-  is_veg: "veg",
-  has_portions: false,
-  price_full: "",
-  price_half: "",
-};
+type ItemDialogState = { categoryId: string | null; item: MenuItem | null } | null;
+type ConfirmState =
+  | { kind: "delete-category"; category: Category }
+  | { kind: "delete-item"; item: MenuItem }
+  | null;
 
 export default function MenuEditor({ businessId, currency, categories, items }: Props) {
-  const [pending, startTransition] = useTransition();
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [editingItem, setEditingItem] = useState<{ id: string | "new"; categoryId: string | null } | null>(null);
+  const [, startTransition] = useTransition();
+  const [newCategory, setNewCategory] = useState("");
+  const [itemDialog, setItemDialog] = useState<ItemDialogState>(null);
+  const [renaming, setRenaming] = useState<Category | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [confirm, setConfirm] = useState<ConfirmState>(null);
 
-  const uncategorized = items.filter((i) => !categories.some((c) => c.id === i.category_id));
+  // Availability flips instantly in the UI; the server result reconciles it.
+  const [optimisticItems, applyAvailability] = useOptimistic(
+    items,
+    (state, patch: { id: string; is_available: boolean }) =>
+      state.map((i) =>
+        i.id === patch.id ? { ...i, is_available: patch.is_available } : i
+      )
+  );
+
+  const run = (action: () => Promise<ActionResult>, successMessage?: string) =>
+    startTransition(async () => {
+      const result = await action();
+      if (!result.ok) toast.error(result.error);
+      else if (successMessage) toast.success(successMessage);
+    });
+
+  const handleToggle = (item: MenuItem, checked: boolean) =>
+    startTransition(async () => {
+      applyAvailability({ id: item.id, is_available: checked });
+      const result = await toggleAvailability(item.id, checked);
+      if (!result.ok) toast.error(result.error);
+    });
+
+  const uncategorized = optimisticItems.filter(
+    (i) => !categories.some((c) => c.id === i.category_id)
+  );
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-bold">Menu</h1>
+    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Menu</h1>
+          <p className="text-sm text-muted-foreground">
+            Changes appear on your live menu immediately.
+          </p>
+        </div>
       </div>
 
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          const name = newCategoryName;
-          setNewCategoryName("");
-          startTransition(() => addCategory(businessId, name));
+          const name = newCategory;
+          setNewCategory("");
+          run(() => addCategory(businessId, name), `Added "${name.trim()}"`);
         }}
-        className="mb-6 flex gap-2"
+        className="flex gap-2"
       >
-        <input
-          value={newCategoryName}
-          onChange={(e) => setNewCategoryName(e.target.value)}
-          placeholder="New category name (e.g. Starters)"
-          className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
+        <Input
+          value={newCategory}
+          onChange={(e) => setNewCategory(e.target.value)}
+          placeholder="New category, e.g. Starters"
         />
-        <button
-          type="submit"
-          disabled={!newCategoryName.trim() || pending}
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          Add category
-        </button>
+        <Button type="submit" disabled={!newCategory.trim()}>
+          <Plus /> Add category
+        </Button>
       </form>
 
-      <div className="flex flex-col gap-8">
-        {categories.map((category) => (
-          <div key={category.id}>
-            <div className="mb-2 flex items-center gap-2">
-              {editingCategory === category.id ? (
-                <input
-                  defaultValue={category.name}
-                  autoFocus
-                  onBlur={(e) => {
-                    startTransition(() => renameCategory(category.id, e.target.value));
-                    setEditingCategory(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                    if (e.key === "Escape") setEditingCategory(null);
-                  }}
-                  className="rounded border border-zinc-300 px-2 py-1 text-base font-bold"
-                />
-              ) : (
-                <h2
-                  onClick={() => setEditingCategory(category.id)}
-                  className="cursor-pointer text-base font-bold hover:underline"
-                  title="Click to rename"
-                >
-                  {category.name}
-                </h2>
-              )}
-              <button
-                onClick={() => {
-                  if (confirm(`Delete "${category.name}"? Items move to Uncategorized.`)) {
-                    startTransition(() => deleteCategory(category.id));
-                  }
-                }}
-                className="ml-auto text-xs font-medium text-red-500"
-              >
-                Delete category
-              </button>
-            </div>
+      {categories.length === 0 && uncategorized.length === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
+            <UtensilsCrossed className="size-8 text-muted-foreground" />
+            <p className="font-medium">Your menu is empty</p>
+            <p className="text-sm text-muted-foreground">
+              Add a category above, then add items to it.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-            <ItemList
-              items={items.filter((i) => i.category_id === category.id)}
-              currency={currency}
-              editingItem={editingItem}
-              setEditingItem={setEditingItem}
-              categoryId={category.id}
-              businessId={businessId}
-              startTransition={startTransition}
-            />
-          </div>
-        ))}
+      {categories.map((category) => (
+        <CategoryCard
+          key={category.id}
+          category={category}
+          items={optimisticItems.filter((i) => i.category_id === category.id)}
+          currency={currency}
+          onAddItem={() => setItemDialog({ categoryId: category.id, item: null })}
+          onEditItem={(item) => setItemDialog({ categoryId: category.id, item })}
+          onDeleteItem={(item) => setConfirm({ kind: "delete-item", item })}
+          onRename={() => {
+            setRenaming(category);
+            setRenameValue(category.name);
+          }}
+          onDelete={() => setConfirm({ kind: "delete-category", category })}
+          onToggle={handleToggle}
+        />
+      ))}
 
-        {uncategorized.length > 0 && (
-          <div>
-            <h2 className="mb-2 text-base font-bold text-zinc-500">Uncategorized</h2>
-            <ItemList
-              items={uncategorized}
-              currency={currency}
-              editingItem={editingItem}
-              setEditingItem={setEditingItem}
-              categoryId={null}
-              businessId={businessId}
-              startTransition={startTransition}
-            />
-          </div>
-        )}
+      {uncategorized.length > 0 && (
+        <CategoryCard
+          category={null}
+          items={uncategorized}
+          currency={currency}
+          onAddItem={() => setItemDialog({ categoryId: null, item: null })}
+          onEditItem={(item) => setItemDialog({ categoryId: null, item })}
+          onDeleteItem={(item) => setConfirm({ kind: "delete-item", item })}
+          onToggle={handleToggle}
+        />
+      )}
 
-        {categories.length === 0 && (
-          <p className="text-sm text-zinc-500">Add a category above to start building your menu.</p>
-        )}
-      </div>
+      {/* Add / edit item */}
+      {itemDialog && (
+        <ItemDialog
+          key={itemDialog.item?.id ?? `new-${itemDialog.categoryId}`}
+          open
+          onOpenChange={(open) => !open && setItemDialog(null)}
+          businessId={businessId}
+          categoryId={itemDialog.categoryId}
+          currency={currency}
+          item={itemDialog.item}
+        />
+      )}
+
+      {/* Rename category */}
+      <Dialog open={renaming !== null} onOpenChange={(open) => !open && setRenaming(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Rename category</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && renaming && renameValue.trim()) {
+                run(() => renameCategory(renaming.id, renameValue), "Category renamed");
+                setRenaming(null);
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenaming(null)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!renameValue.trim()}
+              onClick={() => {
+                if (!renaming) return;
+                run(() => renameCategory(renaming.id, renameValue), "Category renamed");
+                setRenaming(null);
+              }}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmations */}
+      <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirm?.kind === "delete-category"
+                ? `Delete "${confirm.category.name}"?`
+                : `Delete "${confirm?.item.name}"?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirm?.kind === "delete-category"
+                ? "Items in this category move to Uncategorized. This cannot be undone."
+                : "This removes the item from your live menu. This cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (!confirm) return;
+                if (confirm.kind === "delete-category") {
+                  run(() => deleteCategory(confirm.category.id), "Category deleted");
+                } else {
+                  run(() => deleteItem(confirm.item.id), "Item deleted");
+                }
+                setConfirm(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
-function ItemList({
+function CategoryCard({
+  category,
   items,
   currency,
-  editingItem,
-  setEditingItem,
-  categoryId,
-  businessId,
-  startTransition,
+  onAddItem,
+  onEditItem,
+  onDeleteItem,
+  onRename,
+  onDelete,
+  onToggle,
 }: {
+  category: Category | null; // null = Uncategorized
   items: MenuItem[];
   currency: string;
-  editingItem: { id: string | "new"; categoryId: string | null } | null;
-  setEditingItem: (v: { id: string | "new"; categoryId: string | null } | null) => void;
-  categoryId: string | null;
-  businessId: string;
-  startTransition: (fn: () => void) => void;
+  onAddItem: () => void;
+  onEditItem: (item: MenuItem) => void;
+  onDeleteItem: (item: MenuItem) => void;
+  onRename?: () => void;
+  onDelete?: () => void;
+  onToggle: (item: MenuItem, checked: boolean) => void;
 }) {
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-3">
-      {items.map((item) =>
-        editingItem?.id === item.id ? (
-          <ItemForm
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-base">
+          {category?.name ?? <span className="text-muted-foreground">Uncategorized</span>}
+        </CardTitle>
+        <div className="flex items-center gap-1">
+          {onRename && (
+            <Button variant="ghost" size="icon-sm" onClick={onRename} aria-label="Rename category">
+              <Pencil />
+            </Button>
+          )}
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onDelete}
+              aria-label="Delete category"
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 />
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-col">
+        {items.length === 0 && (
+          <p className="py-2 text-sm text-muted-foreground">No items yet.</p>
+        )}
+        {items.map((item) => (
+          <div
             key={item.id}
-            businessId={businessId}
-            categoryId={categoryId}
-            initial={item}
-            onDone={() => setEditingItem(null)}
-            startTransition={startTransition}
-          />
-        ) : (
-          <div key={item.id} className="flex items-center gap-3 border-b border-zinc-100 py-2 last:border-0">
-            {item.is_veg !== null && (
-              <span
-                className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center border-2"
-                style={{ borderColor: item.is_veg ? "#0f8a0f" : "#c0392b" }}
-              >
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ background: item.is_veg ? "#0f8a0f" : "#c0392b" }}
-                />
-              </span>
-            )}
+            className="flex items-center gap-3 border-b py-3 last:border-0"
+          >
+            <VegDot isVeg={item.is_veg} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{item.name}</p>
-              <p className="text-xs text-zinc-500">
+              <p className={`truncate text-sm font-medium ${item.is_available ? "" : "text-muted-foreground line-through"}`}>
+                {item.name}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
                 {item.has_portions
                   ? `Half ${currency}${item.price_half} · Full ${currency}${item.price_full}`
                   : `${currency}${item.price_full}`}
+                {item.description ? ` — ${item.description}` : ""}
               </p>
             </div>
-            <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-600">
-              <input
-                type="checkbox"
-                checked={item.is_available}
-                onChange={(e) => startTransition(() => toggleAvailability(item.id, e.target.checked))}
-              />
-              Available
-            </label>
-            <button
-              onClick={() => setEditingItem({ id: item.id, categoryId })}
-              className="text-xs font-medium text-zinc-600 underline"
+            <Switch
+              checked={item.is_available}
+              onCheckedChange={(checked) => onToggle(item, checked)}
+              aria-label={`${item.name} available`}
+            />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => onEditItem(item)}
+              aria-label={`Edit ${item.name}`}
             >
-              Edit
-            </button>
-            <button
-              onClick={() => {
-                if (confirm(`Delete "${item.name}"?`)) startTransition(() => deleteItem(item.id));
-              }}
-              className="text-xs font-medium text-red-500"
+              <Pencil />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => onDeleteItem(item)}
+              aria-label={`Delete ${item.name}`}
+              className="text-muted-foreground hover:text-destructive"
             >
-              Delete
-            </button>
+              <Trash2 />
+            </Button>
           </div>
-        )
-      )}
-
-      {editingItem?.id === "new" && editingItem.categoryId === categoryId ? (
-        <ItemForm
-          businessId={businessId}
-          categoryId={categoryId}
-          onDone={() => setEditingItem(null)}
-          startTransition={startTransition}
-        />
-      ) : (
-        <button
-          onClick={() => setEditingItem({ id: "new", categoryId })}
-          className="mt-1 self-start text-xs font-semibold text-emerald-700"
-        >
-          + Add item
-        </button>
-      )}
-    </div>
-  );
-}
-
-function ItemForm({
-  businessId,
-  categoryId,
-  initial,
-  onDone,
-  startTransition,
-}: {
-  businessId: string;
-  categoryId: string | null;
-  initial?: MenuItem;
-  onDone: () => void;
-  startTransition: (fn: () => void) => void;
-}) {
-  const [form, setForm] = useState<ItemInput>(
-    initial
-      ? {
-          name: initial.name,
-          description: initial.description ?? "",
-          is_veg: initial.is_veg === null ? "na" : initial.is_veg ? "veg" : "non-veg",
-          has_portions: initial.has_portions,
-          price_full: String(initial.price_full),
-          price_half: initial.price_half != null ? String(initial.price_half) : "",
-        }
-      : emptyItem
-  );
-
-  const submit = () => {
-    if (initial) {
-      startTransition(() => updateItem(initial.id, businessId, categoryId, form));
-    } else {
-      startTransition(() => addItem(businessId, categoryId, form));
-    }
-    onDone();
-  };
-
-  return (
-    <div className="flex flex-col gap-2 rounded-lg bg-zinc-50 p-3">
-      <div className="flex gap-2">
-        <input
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          placeholder="Item name"
-          autoFocus
-          className="flex-1 rounded border border-zinc-300 px-2 py-1.5 text-sm"
-        />
-        <select
-          value={form.is_veg}
-          onChange={(e) => setForm({ ...form, is_veg: e.target.value as ItemInput["is_veg"] })}
-          className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
-        >
-          <option value="veg">Veg</option>
-          <option value="non-veg">Non-veg</option>
-          <option value="na">N/A</option>
-        </select>
-      </div>
-      <input
-        value={form.description}
-        onChange={(e) => setForm({ ...form, description: e.target.value })}
-        placeholder="Description (optional)"
-        className="rounded border border-zinc-300 px-2 py-1.5 text-sm"
-      />
-      <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-600">
-        <input
-          type="checkbox"
-          checked={form.has_portions}
-          onChange={(e) => setForm({ ...form, has_portions: e.target.checked })}
-        />
-        Has Half / Full portions
-      </label>
-      <div className="flex gap-2">
-        {form.has_portions && (
-          <input
-            value={form.price_half}
-            onChange={(e) => setForm({ ...form, price_half: e.target.value })}
-            placeholder="Half price"
-            type="number"
-            className="w-28 rounded border border-zinc-300 px-2 py-1.5 text-sm"
-          />
-        )}
-        <input
-          value={form.price_full}
-          onChange={(e) => setForm({ ...form, price_full: e.target.value })}
-          placeholder={form.has_portions ? "Full price" : "Price"}
-          type="number"
-          className="w-28 rounded border border-zinc-300 px-2 py-1.5 text-sm"
-        />
-      </div>
-      <div className="flex gap-2">
-        <button
-          onClick={submit}
-          disabled={!form.name.trim() || !form.price_full}
-          className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-        >
-          Save
-        </button>
-        <button onClick={onDone} className="rounded px-3 py-1.5 text-xs font-medium text-zinc-500">
-          Cancel
-        </button>
-      </div>
-    </div>
+        ))}
+        <Button variant="outline" size="sm" onClick={onAddItem} className="mt-3 self-start">
+          <Plus /> Add item
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,80 +1,127 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import type { Business } from "@/lib/types";
-import { updateBusiness } from "./actions";
+import { updateBusiness, type BusinessInput } from "./actions";
 
 export default function SettingsForm({ business }: { business: Business }) {
   const [pending, startTransition] = useTransition();
-  const [saved, setSaved] = useState(false);
+  const [form, setForm] = useState<BusinessInput>({
+    name: business.name,
+    tagline: business.tagline ?? "",
+    whatsapp_number: business.whatsapp_number,
+    menu_label: business.menu_label,
+    logo_url: business.logo_url ?? "",
+    is_active: business.is_active,
+  });
+
+  const set = <K extends keyof BusinessInput>(key: K, value: BusinessInput[K]) =>
+    setForm((f) => ({ ...f, [key]: value }));
+
+  const handleSave = () =>
+    startTransition(async () => {
+      const result = await updateBusiness(business.id, form);
+      if (!result.ok) toast.error(result.error);
+      else toast.success("Settings saved");
+    });
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const formData = new FormData(e.currentTarget);
-        setSaved(false);
-        startTransition(async () => {
-          await updateBusiness(business.id, formData);
-          setSaved(true);
-        });
-      }}
-      className="flex flex-col gap-4"
-    >
-      <Field label="Business name" name="name" defaultValue={business.name} required />
-      <Field label="Tagline" name="tagline" defaultValue={business.tagline ?? ""} />
-      <Field
-        label="WhatsApp number (with country code, no + or spaces)"
-        name="whatsapp_number"
-        defaultValue={business.whatsapp_number}
-        placeholder="919812345678"
-        required
-      />
-      <Field label="Menu label" name="menu_label" defaultValue={business.menu_label} placeholder="Menu / Services / Price List" />
-      <Field label="Logo URL" name="logo_url" defaultValue={business.logo_url ?? ""} />
+    <Card>
+      <CardHeader>
+        <CardTitle>Business profile</CardTitle>
+        <CardDescription>
+          Shown on your public menu page at /m/{business.slug}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="biz-name">Business name</Label>
+          <Input
+            id="biz-name"
+            value={form.name}
+            onChange={(e) => set("name", e.target.value)}
+          />
+        </div>
 
-      <label className="flex items-center gap-2 text-sm font-medium text-zinc-700">
-        <input type="checkbox" name="is_active" defaultChecked={business.is_active} />
-        Menu is live (visible to customers)
-      </label>
+        <div className="grid gap-2">
+          <Label htmlFor="biz-tagline">Tagline (optional)</Label>
+          <Input
+            id="biz-tagline"
+            value={form.tagline}
+            onChange={(e) => set("tagline", e.target.value)}
+            placeholder="e.g. Authentic Indian Cuisine"
+          />
+        </div>
 
-      <div className="mt-2 flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          {pending ? "Saving…" : "Save changes"}
-        </button>
-        {saved && !pending && <span className="text-sm text-emerald-600">Saved.</span>}
-      </div>
-    </form>
-  );
-}
+        <div className="grid gap-2">
+          <Label htmlFor="biz-wa">WhatsApp number</Label>
+          <Input
+            id="biz-wa"
+            value={form.whatsapp_number}
+            onChange={(e) => set("whatsapp_number", e.target.value)}
+            placeholder="919812345678"
+            inputMode="numeric"
+          />
+          <p className="text-xs text-muted-foreground">
+            With country code, digits only — orders are sent to this number.
+          </p>
+        </div>
 
-function Field({
-  label,
-  name,
-  defaultValue,
-  placeholder,
-  required,
-}: {
-  label: string;
-  name: string;
-  defaultValue: string;
-  placeholder?: string;
-  required?: boolean;
-}) {
-  return (
-    <label className="flex flex-col gap-1 text-sm font-medium text-zinc-700">
-      {label}
-      <input
-        name={name}
-        defaultValue={defaultValue}
-        placeholder={placeholder}
-        required={required}
-        className="rounded-lg border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500"
-      />
-    </label>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <Label htmlFor="biz-label">Menu label</Label>
+            <Input
+              id="biz-label"
+              value={form.menu_label}
+              onChange={(e) => set("menu_label", e.target.value)}
+              placeholder="Menu / Services / Price List"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="biz-logo">Logo URL (optional)</Label>
+            <Input
+              id="biz-logo"
+              value={form.logo_url}
+              onChange={(e) => set("logo_url", e.target.value)}
+              placeholder="https://…"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div>
+            <Label htmlFor="biz-active">Menu is live</Label>
+            <p className="text-xs text-muted-foreground">
+              Turning this off shows customers &quot;menu not available&quot;.
+            </p>
+          </div>
+          <Switch
+            id="biz-active"
+            checked={form.is_active}
+            onCheckedChange={(v) => set("is_active", v)}
+          />
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button onClick={handleSave} disabled={pending}>
+          {pending && <Loader2 className="animate-spin" />}
+          Save changes
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }

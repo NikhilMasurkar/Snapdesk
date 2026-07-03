@@ -2,21 +2,44 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/dal";
+import { type ActionResult, ok, fail } from "@/lib/action-result";
 
-export async function updateBusiness(businessId: string, formData: FormData) {
+export type BusinessInput = {
+  name: string;
+  tagline: string;
+  whatsapp_number: string;
+  menu_label: string;
+  logo_url: string;
+  is_active: boolean;
+};
+
+export async function updateBusiness(
+  businessId: string,
+  input: BusinessInput
+): Promise<ActionResult> {
+  if (!input.name.trim()) return fail("Business name is required.");
+
+  const whatsapp = input.whatsapp_number.replace(/\D/g, "");
+  if (whatsapp.length < 10) {
+    return fail("WhatsApp number must include country code, e.g. 919812345678.");
+  }
+
+  await requireUser();
   const supabase = await createClient();
-
-  await supabase
+  const { error } = await supabase
     .from("businesses")
     .update({
-      name: String(formData.get("name") ?? "").trim(),
-      tagline: String(formData.get("tagline") ?? "").trim() || null,
-      whatsapp_number: String(formData.get("whatsapp_number") ?? "").replace(/\D/g, ""),
-      menu_label: String(formData.get("menu_label") ?? "Menu").trim() || "Menu",
-      logo_url: String(formData.get("logo_url") ?? "").trim() || null,
-      is_active: formData.get("is_active") === "on",
+      name: input.name.trim(),
+      tagline: input.tagline.trim() || null,
+      whatsapp_number: whatsapp,
+      menu_label: input.menu_label.trim() || "Menu",
+      logo_url: input.logo_url.trim() || null,
+      is_active: input.is_active,
     })
     .eq("id", businessId);
 
+  if (error) return fail(error.message);
   revalidatePath("/dashboard/settings");
+  return ok;
 }

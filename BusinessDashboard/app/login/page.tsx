@@ -1,3 +1,4 @@
+import { Store } from "lucide-react";
 import LoginForm from "./LoginForm";
 
 export default async function LoginPage({
@@ -8,10 +9,13 @@ export default async function LoginPage({
   const { created } = await searchParams;
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-6 px-6 py-16">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">Snapdesk Business Dashboard</h1>
-        <p className="mt-1 text-sm text-zinc-500">
+    <main className="flex flex-1 flex-col items-center justify-center gap-8 bg-muted/40 px-4 py-16">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+          <Store className="size-6" />
+        </div>
+        <h1 className="text-2xl font-bold tracking-tight">Snapdesk Business</h1>
+        <p className="text-sm text-muted-foreground">
           Manage your menu, availability, and WhatsApp orders.
         </p>
       </div>

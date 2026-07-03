@@ -34,12 +34,19 @@ Shares the SAME Supabase project/backend as the public menu app
 - `proxy.ts` — session refresh + route gating (redirects unauthenticated
   users away from `/dashboard`, authenticated users away from `/login`)
 - `lib/supabase/{server,client,middleware}.ts` — Supabase SSR client setup
-- `lib/dal.ts` — `requireUser()`, `getOwnerBusiness()` — data access layer,
-  the only place that trusts `owner_id = auth.uid()`
-- `app/login/` — email/password login + signup (Server Actions)
-- `app/dashboard/menu/` — categories + items CRUD, availability toggle
-- `app/dashboard/settings/` — business profile editing
-- `app/dashboard/testimonials/` — approve/reject testimonials
+- `lib/dal.ts` — `requireUser()`, `getOwnerBusiness()`, wrapped in React
+  `cache()` (layout + page both call them; dedupe avoids double queries).
+  The only place that trusts `owner_id = auth.uid()`.
+- `lib/action-result.ts` — `ActionResult` shape all server actions return
+- `components/ui/` — shadcn/ui primitives (Radix + Tailwind; installed via
+  `npx shadcn add <name>`, do not hand-edit unless intentional)
+- `components/dashboard/` — app-specific shared components (nav, VegDot)
+- `app/login/` — email/password login + signup (Server Actions + Tabs)
+- `app/dashboard/menu/` — category cards, item add/edit Dialogs, delete
+  AlertDialogs, availability Switch with `useOptimistic`
+- `app/dashboard/settings/` — typed business profile form
+- `app/dashboard/testimonials/` — approve/reject with status Badges
+- `app/dashboard/*/loading.tsx` — Skeleton states per route
 
 ## Conventions
 
@@ -47,6 +54,12 @@ Shares the SAME Supabase project/backend as the public menu app
   `owner_id = auth.uid()` (see `phase2_auth.sql`) — that's the real security
   boundary, not application-level checks.
 - One business per owner (product decision — no multi-business switcher).
-- Server Actions are called directly from Client Components (not always via
-  `<form action>`) so structured item/category state can be validated
-  client-side before the RPC.
+- Every server action returns `ActionResult` (`lib/action-result.ts`):
+  validate input, check the Supabase `error`, never swallow failures.
+  Clients toast errors via sonner — no silent no-ops.
+- UI components are shadcn/ui only — do NOT add Ant Design/MUI/etc; they
+  bloat the bundle and clash with the Tailwind token theme.
+- Availability/status flips use `useOptimistic` inside `startTransition`
+  so the UI responds instantly; the revalidated server state reconciles.
+- Public menu app URL comes from `NEXT_PUBLIC_MENU_BASE_URL` (env), not
+  hardcoded.
