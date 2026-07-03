@@ -1,9 +1,5 @@
-# This repo's root now only holds the UserMenuList app (see UserMenuList/.gitignore
-# for its own ignores) plus sibling apps that are separate, independent repos.
+# Monorepo root — UserMenuList, BusinessDashboard, Admin, and
+# Promotional_Website are child apps of this one repo, each with their
+# own .gitignore for node_modules/.next/.env* etc.
 
 .DS_Store
-
-# sibling apps — each is its own independent git repo, not part of this one
-/BusinessDashboard/
-/Admin/
-/Promotional_Website/
