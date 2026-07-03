@@ -62,6 +62,7 @@ export type ItemInput = {
   has_portions: boolean;
   price_full: string;
   price_half: string;
+  photo_url: string;
 };
 
 function validateItem(input: ItemInput): string | null {
@@ -87,6 +88,7 @@ function toItemRow(businessId: string, categoryId: string | null, input: ItemInp
     has_portions: input.has_portions,
     price_full: Number(input.price_full),
     price_half: input.has_portions ? Number(input.price_half) : null,
+    photo_url: input.photo_url.trim() || null,
   };
 }
 
@@ -136,6 +138,40 @@ export async function deleteItem(itemId: string): Promise<ActionResult> {
   const { error } = await supabase.from("menu_items").delete().eq("id", itemId);
 
   if (error) return fail(error.message);
+  revalidatePath("/dashboard/menu");
+  return ok;
+}
+
+// Persist a new display order. RLS scopes every update to the owner's rows;
+// looping is fine at menu scale (tens of rows, not thousands).
+export async function reorderCategories(orderedIds: string[]): Promise<ActionResult> {
+  if (orderedIds.length === 0) return ok;
+
+  await requireUser();
+  const supabase = await createClient();
+  for (const [index, id] of orderedIds.entries()) {
+    const { error } = await supabase
+      .from("categories")
+      .update({ sort_order: index })
+      .eq("id", id);
+    if (error) return fail(error.message);
+  }
+  revalidatePath("/dashboard/menu");
+  return ok;
+}
+
+export async function reorderItems(orderedIds: string[]): Promise<ActionResult> {
+  if (orderedIds.length === 0) return ok;
+
+  await requireUser();
+  const supabase = await createClient();
+  for (const [index, id] of orderedIds.entries()) {
+    const { error } = await supabase
+      .from("menu_items")
+      .update({ sort_order: index })
+      .eq("id", id);
+    if (error) return fail(error.message);
+  }
   revalidatePath("/dashboard/menu");
   return ok;
 }

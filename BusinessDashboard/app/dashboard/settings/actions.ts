@@ -10,6 +10,7 @@ export type BusinessInput = {
   tagline: string;
   whatsapp_number: string;
   menu_label: string;
+  currency: string;
   logo_url: string;
   is_active: boolean;
 };
@@ -21,8 +22,8 @@ export async function updateBusiness(
   if (!input.name.trim()) return fail("Business name is required.");
 
   const whatsapp = input.whatsapp_number.replace(/\D/g, "");
-  if (whatsapp.length < 10) {
-    return fail("WhatsApp number must include country code, e.g. 919812345678.");
+  if (whatsapp.length < 10 || whatsapp.length > 15) {
+    return fail("WhatsApp number must be 10–15 digits with country code, e.g. 919812345678.");
   }
 
   await requireUser();
@@ -34,6 +35,7 @@ export async function updateBusiness(
       tagline: input.tagline.trim() || null,
       whatsapp_number: whatsapp,
       menu_label: input.menu_label.trim() || "Menu",
+      currency: input.currency.trim() || "₹",
       logo_url: input.logo_url.trim() || null,
       is_active: input.is_active,
     })

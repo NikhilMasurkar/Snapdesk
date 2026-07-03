@@ -454,7 +454,18 @@ function ItemCard({
         )}
       </div>
 
-      <div className="shrink-0 pt-0.5">
+      <div className="flex shrink-0 flex-col items-center gap-1.5 pt-0.5">
+        {item.photo_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.photo_url}
+            alt={item.name}
+            loading="lazy"
+            className={`h-20 w-24 rounded-xl border border-zinc-100 object-cover ${
+              soldOut ? "grayscale" : ""
+            }`}
+          />
+        )}
         {soldOut ? (
           <button
             disabled

@@ -16,6 +16,7 @@ function Stars({ rating }: { rating: number }) {
 
 type Props = {
   businessId: string;
+  slug: string;
   initialReviews: Testimonial[];
   /** True totals across ALL approved reviews (from business_review_stats). */
   totalCount: number;
@@ -24,6 +25,7 @@ type Props = {
 
 export default function ReviewsSection({
   businessId,
+  slug,
   initialReviews,
   totalCount,
   avgRating,
@@ -93,7 +95,7 @@ export default function ReviewsSection({
         </p>
       )}
 
-      <ReviewForm businessId={businessId} />
+      <ReviewForm businessId={businessId} slug={slug} />
     </section>
   );
 }

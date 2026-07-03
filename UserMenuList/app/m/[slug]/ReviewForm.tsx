@@ -1,11 +1,40 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import { submitReview } from "./actions";
 
-export default function ReviewForm({ businessId }: { businessId: string }) {
+const noopSubscribe = () => () => {};
+
+/**
+ * Soft spam control (spec §6): one review per device per business.
+ * localStorage only — RLS still guards what actually gets inserted.
+ * Server snapshot is false so SSR always renders the form; the client
+ * value takes over on hydration without a mismatch.
+ */
+function useAlreadyReviewed(slug: string) {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => {
+      try {
+        return !!localStorage.getItem(`reviewed_${slug}`);
+      } catch {
+        return false; // localStorage unavailable (private mode)
+      }
+    },
+    () => false
+  );
+}
+
+export default function ReviewForm({
+  businessId,
+  slug,
+}: {
+  businessId: string;
+  slug: string;
+}) {
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const alreadyReviewed = useAlreadyReviewed(slug);
   const [name, setName] = useState("");
   const [rating, setRating] = useState(0);
   const [text, setText] = useState("");
@@ -18,6 +47,14 @@ export default function ReviewForm({ businessId }: { businessId: string }) {
         ✅ Thanks for your review! It will appear here once the business
         approves it.
       </div>
+    );
+  }
+
+  if (alreadyReviewed) {
+    return (
+      <p className="mt-4 text-center text-xs text-zinc-400">
+        You&apos;ve already shared a review from this device — thank you!
+      </p>
     );
   }
 
@@ -40,6 +77,11 @@ export default function ReviewForm({ businessId }: { businessId: string }) {
       if (!result.ok) {
         setError(result.error);
         return;
+      }
+      try {
+        localStorage.setItem(`reviewed_${slug}`, new Date().toISOString());
+      } catch {
+        // best-effort only
       }
       setSubmitted(true);
     });

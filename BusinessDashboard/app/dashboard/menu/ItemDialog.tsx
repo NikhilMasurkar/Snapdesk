@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { ImageUp, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +24,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { MenuItem } from "@/lib/types";
+import { compressAndUpload } from "@/lib/storage";
 import { addItem, updateItem, type ItemInput } from "./actions";
 
 type Props = {
@@ -45,6 +46,7 @@ function initialForm(item: MenuItem | null): ItemInput {
       has_portions: false,
       price_full: "",
       price_half: "",
+      photo_url: "",
     };
   }
   return {
@@ -54,6 +56,7 @@ function initialForm(item: MenuItem | null): ItemInput {
     has_portions: item.has_portions,
     price_full: String(item.price_full),
     price_half: item.price_half != null ? String(item.price_half) : "",
+    photo_url: item.photo_url ?? "",
   };
 }
 
@@ -67,9 +70,32 @@ export default function ItemDialog({
 }: Props) {
   const [form, setForm] = useState<ItemInput>(() => initialForm(item));
   const [pending, startTransition] = useTransition();
+  const [uploading, setUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof ItemInput>(key: K, value: ItemInput[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  // Spec: warn (don't block) when Half ≥ Full — usually a typo.
+  const halfNotLessThanFull =
+    form.has_portions &&
+    form.price_half !== "" &&
+    form.price_full !== "" &&
+    Number(form.price_half) >= Number(form.price_full);
+
+  const handlePhotoFile = async (file: File | undefined) => {
+    if (!file) return;
+    setUploading(true);
+    // Random file name: works for new items too (no item id yet).
+    const path = `${businessId}/items/${crypto.randomUUID()}.webp`;
+    const result = await compressAndUpload(file, path);
+    setUploading(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    set("photo_url", result.url);
+  };
 
   const handleSave = () =>
     startTransition(async () => {
@@ -118,6 +144,66 @@ export default function ItemDialog({
               placeholder="Short description shown under the name"
               rows={2}
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Photo (optional)</Label>
+            <div className="flex items-center gap-3">
+              {form.photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={form.photo_url}
+                  alt="Item photo preview"
+                  className="size-14 rounded-lg border object-cover"
+                />
+              ) : (
+                <div className="flex size-14 items-center justify-center rounded-lg border border-dashed text-muted-foreground">
+                  <ImageUp className="size-5" />
+                </div>
+              )}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploading}
+                    onClick={() => photoInputRef.current?.click()}
+                  >
+                    {uploading ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <ImageUp className="size-3.5" />
+                    )}
+                    {uploading ? "Uploading…" : form.photo_url ? "Replace" : "Upload"}
+                  </Button>
+                  {form.photo_url && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => set("photo_url", "")}
+                    >
+                      <Trash2 className="size-3.5" /> Remove
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Compressed automatically (WebP, under 100KB).
+                </p>
+              </div>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  handlePhotoFile(e.target.files?.[0]);
+                  e.target.value = "";
+                }}
+              />
+            </div>
           </div>
 
           <div className="grid gap-2">
@@ -179,13 +265,19 @@ export default function ItemDialog({
               />
             </div>
           </div>
+
+          {halfNotLessThanFull && (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+              ⚠ Half price is usually less than Full price — double-check before saving.
+            </p>
+          )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={pending}>
+          <Button onClick={handleSave} disabled={pending || uploading}>
             {pending && <Loader2 className="animate-spin" />}
             {item ? "Save changes" : "Add item"}
           </Button>
