@@ -9,6 +9,7 @@ import type {
   Testimonial,
 } from "@/lib/types";
 import MenuClient from "./CartClient";
+import ReviewForm from "./ReviewForm";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -98,7 +99,7 @@ export default async function MenuPage({ params, searchParams }: PageProps) {
         sections={sections}
         tableFromUrl={table}
       />
-      <TestimonialsSection testimonials={testimonials} />
+      <TestimonialsSection testimonials={testimonials} businessId={business.id} />
       <footer className="px-4 pb-32 pt-8 text-center text-xs text-zinc-400">
         Powered by Snapdesk
       </footer>
@@ -115,34 +116,49 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
-function TestimonialsSection({ testimonials }: { testimonials: Testimonial[] }) {
-  if (testimonials.length === 0) return null;
-
+function TestimonialsSection({
+  testimonials,
+  businessId,
+}: {
+  testimonials: Testimonial[];
+  businessId: string;
+}) {
   const average =
-    testimonials.reduce((sum, t) => sum + t.rating, 0) / testimonials.length;
+    testimonials.length > 0
+      ? testimonials.reduce((sum, t) => sum + t.rating, 0) / testimonials.length
+      : 0;
 
   return (
     <section className="border-t border-zinc-100 px-4 pt-6">
       <h2 className="text-base font-semibold">What customers say</h2>
-      <p className="mt-1 text-sm text-zinc-600">
-        <Stars rating={Math.round(average)} />{" "}
-        <span className="font-medium">{average.toFixed(1)}</span> ·{" "}
-        {testimonials.length} review{testimonials.length > 1 ? "s" : ""}
-      </p>
-      <div className="mt-3 flex flex-col gap-3">
-        {testimonials.map((t) => (
-          <blockquote
-            key={t.id}
-            className="rounded-xl border border-zinc-100 bg-zinc-50 p-3"
-          >
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">{t.customer_name}</span>
-              <Stars rating={t.rating} />
-            </div>
-            <p className="mt-1 text-sm text-zinc-600">{t.text}</p>
-          </blockquote>
-        ))}
-      </div>
+      {testimonials.length > 0 ? (
+        <>
+          <p className="mt-1 text-sm text-zinc-600">
+            <Stars rating={Math.round(average)} />{" "}
+            <span className="font-medium">{average.toFixed(1)}</span> ·{" "}
+            {testimonials.length} review{testimonials.length > 1 ? "s" : ""}
+          </p>
+          <div className="mt-3 flex flex-col gap-3">
+            {testimonials.map((t) => (
+              <blockquote
+                key={t.id}
+                className="rounded-xl border border-zinc-100 bg-zinc-50 p-3"
+              >
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">{t.customer_name}</span>
+                  <Stars rating={t.rating} />
+                </div>
+                <p className="mt-1 text-sm text-zinc-600">{t.text}</p>
+              </blockquote>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="mt-1 text-sm text-zinc-500">
+          No reviews yet — be the first!
+        </p>
+      )}
+      <ReviewForm businessId={businessId} />
     </section>
   );
 }

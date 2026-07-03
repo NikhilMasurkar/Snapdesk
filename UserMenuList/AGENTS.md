@@ -27,12 +27,16 @@ Full requirements: `PHASE1_SPEC.md` (treat it as the source of truth).
 
 - `app/m/[slug]/page.tsx` — Server Component: fetches business/menu/testimonials, renders testimonials; 404 via `not-found.tsx`
 - `app/m/[slug]/CartClient.tsx` — all client UI: header, category pills, item cards, portion sheet, cart drawer, WhatsApp checkout
+- `app/m/[slug]/ReviewForm.tsx` + `actions.ts` — customer review submission (pending until owner approves)
 - `lib/cart.ts` — cart types + localStorage persistence (key `qrmenu_cart_<slug>`, per-business)
 - `lib/whatsapp.ts` — order message formatting + `wa.me` link building
 - `lib/supabase.ts` — anon Supabase client
 
 ## Conventions
 
-- Phase 1 has NO auth, dashboard, payments, or write paths — don't add them.
+- No auth, dashboard, or payments here — those live in ../BusinessDashboard.
+- The ONLY write path is review submission (`app/m/[slug]/actions.ts`):
+  anonymous inserts into `testimonials` restricted to status='pending' by RLS
+  (`supabase/reviews_policy.sql`); owners approve in the dashboard.
 - Cart line identity = `itemId + portion` (Half/Full are separate lines).
 - Checkout must use `window.location.href` (not `window.open`) for webview compatibility.
