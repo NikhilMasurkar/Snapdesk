@@ -32,6 +32,8 @@ import { Switch } from "@/components/ui/switch";
 import VegDot from "@/components/dashboard/VegDot";
 import type { Category, MenuItem } from "@/lib/types";
 import type { ActionResult } from "@/lib/action-result";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import {
   addCategory,
   deleteCategory,
@@ -90,7 +92,7 @@ export default function MenuEditor({ businessId, currency, categories, items }: 
   );
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex max-w-5xl flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Menu</h1>
@@ -269,15 +271,26 @@ function CategoryCard({
   onToggle: (item: MenuItem, checked: boolean) => void;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base">
-          {category?.name ?? <span className="text-muted-foreground">Uncategorized</span>}
-        </CardTitle>
-        <div className="flex items-center gap-1">
+    <Card className="shadow-sm border border-muted/50 overflow-hidden hover:shadow-md transition-all duration-200">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 bg-muted/20 border-b py-3 px-5">
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-sm font-bold tracking-tight">
+            {category?.name ?? <span className="text-muted-foreground italic font-medium">Uncategorized</span>}
+          </CardTitle>
+          <span className="rounded-full bg-muted-foreground/10 text-muted-foreground text-[10px] font-bold px-2 py-0.5 select-none">
+            {items.length} {items.length === 1 ? "item" : "items"}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 select-none">
           {onRename && (
-            <Button variant="ghost" size="icon-sm" onClick={onRename} aria-label="Rename category">
-              <Pencil />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onRename}
+              aria-label="Rename category"
+              className="size-7 hover:bg-muted-foreground/10"
+            >
+              <Pencil className="size-3.5" />
             </Button>
           )}
           {onDelete && (
@@ -286,61 +299,101 @@ function CategoryCard({
               size="icon-sm"
               onClick={onDelete}
               aria-label="Delete category"
-              className="text-muted-foreground hover:text-destructive"
+              className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             >
-              <Trash2 />
+              <Trash2 className="size-3.5" />
             </Button>
           )}
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col">
-        {items.length === 0 && (
-          <p className="py-2 text-sm text-muted-foreground">No items yet.</p>
-        )}
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-center gap-3 border-b py-3 last:border-0"
-          >
-            <VegDot isVeg={item.is_veg} />
-            <div className="min-w-0 flex-1">
-              <p className={`truncate text-sm font-medium ${item.is_available ? "" : "text-muted-foreground line-through"}`}>
-                {item.name}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {item.has_portions
-                  ? `Half ${currency}${item.price_half} · Full ${currency}${item.price_full}`
-                  : `${currency}${item.price_full}`}
-                {item.description ? ` — ${item.description}` : ""}
-              </p>
-            </div>
-            <Switch
-              checked={item.is_available}
-              onCheckedChange={(checked) => onToggle(item, checked)}
-              aria-label={`${item.name} available`}
-            />
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => onEditItem(item)}
-              aria-label={`Edit ${item.name}`}
-            >
-              <Pencil />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => onDeleteItem(item)}
-              aria-label={`Delete ${item.name}`}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 />
-            </Button>
+      <CardContent className="flex flex-col p-0">
+        {items.length === 0 ? (
+          <p className="py-6 text-center text-xs text-muted-foreground italic bg-background/50">
+            No items in this category yet.
+          </p>
+        ) : (
+          <div className="divide-y divide-muted/50 bg-background">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className={cn(
+                  "flex items-center gap-4 py-3 px-5 transition-colors duration-150",
+                  item.is_available ? "hover:bg-muted/5" : "bg-muted/10 opacity-75"
+                )}
+              >
+                <div className="shrink-0 select-none">
+                  <VegDot isVeg={item.is_veg} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p
+                      className={cn(
+                        "truncate text-sm font-semibold tracking-tight text-foreground",
+                        !item.is_available && "text-muted-foreground line-through decoration-muted-foreground/60"
+                      )}
+                    >
+                      {item.name}
+                    </p>
+                    {!item.is_available && (
+                      <Badge variant="secondary" className="text-[9px] py-0 px-1.5 uppercase font-semibold select-none">
+                        Sold Out
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground/80 mt-0.5">
+                    <span className="font-medium text-foreground/80">
+                      {item.has_portions
+                        ? `Half: ${currency}${item.price_half} · Full: ${currency}${item.price_full}`
+                        : `${currency}${item.price_full}`}
+                    </span>
+                    {item.description ? ` — ${item.description}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 select-none">
+                  <div className="flex items-center gap-1.5 mr-2">
+                    <span className="text-[10px] text-muted-foreground/85 font-medium hidden sm:inline">
+                      {item.is_available ? "Available" : "Hidden"}
+                    </span>
+                    <Switch
+                      checked={item.is_available}
+                      onCheckedChange={(checked) => onToggle(item, checked)}
+                      aria-label={`${item.name} available`}
+                      className="scale-90"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onEditItem(item)}
+                    aria-label={`Edit ${item.name}`}
+                    className="size-7 hover:bg-muted-foreground/10"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onDeleteItem(item)}
+                    aria-label={`Delete ${item.name}`}
+                    className="size-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-        <Button variant="outline" size="sm" onClick={onAddItem} className="mt-3 self-start">
-          <Plus /> Add item
-        </Button>
+        )}
+        <div className="p-3 bg-muted/10 border-t border-muted/50 flex justify-start select-none">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onAddItem}
+            className="h-8 text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all duration-200 border-muted-foreground/20"
+          >
+            <Plus className="mr-1 size-3" /> Add item
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

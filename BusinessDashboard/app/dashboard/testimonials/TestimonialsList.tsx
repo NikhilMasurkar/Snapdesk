@@ -86,14 +86,17 @@ const formatDate = (dateStr: string) => {
   }
 };
 
+type StatusTab = "all" | "pending" | "approved" | "rejected";
+type SortOption = "newest" | "oldest" | "rating-high" | "rating-low";
+
 export default function TestimonialsList({ testimonials }: { testimonials: Testimonial[] }) {
   const [pending, startTransition] = useTransition();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   // Filter & Sort state
-  const [activeTab, setActiveTab] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [activeTab, setActiveTab] = useState<StatusTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "rating-high" | "rating-low">("newest");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
 
   // Calculate Dashboard Metrics
   const stats = useMemo(() => {
@@ -229,7 +232,7 @@ export default function TestimonialsList({ testimonials }: { testimonials: Testi
 
       {/* 2. Search, Status Tabs & Sorting Toolbar */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-y py-4 my-1">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full lg:w-auto">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as StatusTab)} className="w-full lg:w-auto">
           <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex bg-muted/60 p-1">
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="pending" className="relative">
@@ -256,7 +259,7 @@ export default function TestimonialsList({ testimonials }: { testimonials: Testi
             />
           </div>
 
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
             <SelectTrigger className="w-full sm:w-[170px] bg-background">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
