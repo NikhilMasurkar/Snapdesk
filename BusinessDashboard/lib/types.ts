@@ -42,4 +42,5 @@ export type Testimonial = {
   text: string;
   status: "pending" | "approved" | "rejected";
   created_at: string;
+  rejected_at?: string | null;
 };
