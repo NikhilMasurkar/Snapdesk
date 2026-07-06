@@ -12,7 +12,9 @@ export type BusinessInput = {
   menu_label: string;
   currency: string;
   logo_url: string;
-  is_active: boolean;
+  // 10.1 owner-editable master switch; is_active is admin-only since Phase 3.
+  accepting_orders: boolean;
+  opening_hours: string;
 };
 
 export async function updateBusiness(
@@ -37,7 +39,8 @@ export async function updateBusiness(
       menu_label: input.menu_label.trim() || "Menu",
       currency: input.currency.trim() || "₹",
       logo_url: input.logo_url.trim() || null,
-      is_active: input.is_active,
+      accepting_orders: input.accepting_orders,
+      opening_hours: input.opening_hours.trim() || null,
     })
     .eq("id", businessId);
 

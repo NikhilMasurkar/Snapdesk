@@ -49,7 +49,8 @@ export default function SettingsForm({
     menu_label: business.menu_label,
     currency: business.currency ?? "₹",
     logo_url: business.logo_url ?? "",
-    is_active: business.is_active,
+    accepting_orders: business.accepting_orders ?? true,
+    opening_hours: business.opening_hours ?? "",
   });
 
   const set = <K extends keyof BusinessInput>(key: K, value: BusinessInput[K]) =>
@@ -265,17 +266,31 @@ export default function SettingsForm({
             </p>
           </div>
 
+          <div className="grid gap-2">
+            <Label htmlFor="biz-hours" className={labelClass}>Opening hours (optional)</Label>
+            <Input
+              id="biz-hours"
+              value={form.opening_hours}
+              onChange={(e) => set("opening_hours", e.target.value)}
+              placeholder="10am–11pm, closed Mon"
+              className="bg-background"
+            />
+            <p className="text-xs text-muted-foreground/80">
+              Shown to customers when you stop accepting orders.
+            </p>
+          </div>
+
           <div className="flex items-center justify-between rounded-lg border bg-muted/20 p-4 transition-all duration-200">
             <div className="space-y-0.5">
-              <Label htmlFor="biz-active" className="text-sm font-semibold tracking-tight">Menu is live</Label>
+              <Label htmlFor="biz-accepting" className="text-sm font-semibold tracking-tight">Accepting orders</Label>
               <p className="text-xs text-muted-foreground/85">
-                Turning this off shows customers &quot;menu not available&quot;.
+                Turn off when you close — customers can browse the menu but not order.
               </p>
             </div>
             <Switch
-              id="biz-active"
-              checked={form.is_active}
-              onCheckedChange={(v) => set("is_active", v)}
+              id="biz-accepting"
+              checked={form.accepting_orders}
+              onCheckedChange={(v) => set("accepting_orders", v)}
               className="scale-90"
             />
           </div>

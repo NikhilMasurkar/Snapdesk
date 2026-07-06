@@ -64,6 +64,7 @@ export default function Sidebar({
       <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 select-none">
         Overview
       </p>
+      
       {navItems.map(({ href, label, icon: Icon, badge }) => {
         const isActive = pathname.startsWith(href);
         return (
