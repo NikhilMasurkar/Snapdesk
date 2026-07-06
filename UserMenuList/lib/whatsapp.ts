@@ -8,12 +8,15 @@ export type OrderDetails = {
   table: string | null;
   lines: CartLine[];
   note: string;
+  /** Server-generated order short ID, e.g. 'A4X9'. Omitted if the insert failed. */
+  shortId?: string | null;
 };
 
 export function buildOrderMessage(order: OrderDetails): string {
-  const { businessName, currency, table, lines, note } = order;
+  const { businessName, currency, table, lines, note, shortId } = order;
 
   const parts: string[] = [`🧾 New Order – ${businessName}`];
+  if (shortId) parts.push(`Order ID: #${shortId}`);
   if (table) parts.push(`📍 Table: ${table}`);
   parts.push('');
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MenuItem, MenuSection } from "@/lib/types";
 import { formatMoney } from "@/lib/types";
 import {
@@ -15,9 +15,11 @@ import {
   saveCart,
 } from "@/lib/cart";
 import { buildOrderMessage, buildWaLink } from "@/lib/whatsapp";
+import { placeOrder } from "./actions";
 
 type Props = {
   slug: string;
+  businessId: string;
   businessName: string;
   whatsappNumber: string;
   currency: string;
@@ -26,10 +28,15 @@ type Props = {
   menuLabel: string;
   sections: MenuSection[];
   tableFromUrl: string | null;
+  /** Plan-level flag: does this business have online ordering at all? */
+  orderingEnabled: boolean;
+  /** Owner toggle: temporarily open/closed for orders. */
+  acceptingOrders: boolean;
 };
 
 export default function MenuClient({
   slug,
+  businessId,
   businessName,
   whatsappNumber,
   currency,
@@ -38,6 +45,8 @@ export default function MenuClient({
   menuLabel,
   sections,
   tableFromUrl,
+  orderingEnabled,
+  acceptingOrders,
 }: Props) {
   const [hydrated, setHydrated] = useState(false);
   const [lines, setLines] = useState<CartLine[]>([]);
@@ -46,7 +55,22 @@ export default function MenuClient({
   const [sheetItem, setSheetItem] = useState<MenuItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sentShortId, setSentShortId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [placing, setPlacing] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // Stable idempotency key for the current cart. Reused across checkout
+  // retries/double-taps (the DB dedupes on it) and reset after a send.
+  const clientKeyRef = useRef<string | null>(null);
+  const ensureClientKey = () => {
+    if (!clientKeyRef.current) clientKeyRef.current = crypto.randomUUID();
+    return clientKeyRef.current;
+  };
+
+  // Ordering is live only when the plan allows it AND the owner is open.
+  const orderingOn = orderingEnabled && acceptingOrders;
 
   // Restore cart on load; the URL table param wins over the stored one.
   // localStorage is only readable post-mount, so setting state here is
@@ -57,7 +81,11 @@ export default function MenuClient({
     setLines(stored.lines);
     setNote(stored.note);
     setTable(tableFromUrl ?? stored.table);
-    if (consumeOrderSent(slug)) setSent(true);
+    const prior = consumeOrderSent(slug);
+    if (prior.sent) {
+      setSent(true);
+      setSentShortId(prior.shortId);
+    }
     setHydrated(true);
   }, [slug, tableFromUrl]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -86,6 +114,21 @@ export default function MenuClient({
   const count = useMemo(() => cartCount(lines), [lines]);
   const total = useMemo(() => cartTotal(lines), [lines]);
 
+  const trimmedQuery = query.trim().toLowerCase();
+  const displaySections = useMemo(() => {
+    if (!trimmedQuery) return sections;
+    return sections
+      .map((s) => ({
+        ...s,
+        items: s.items.filter(
+          (i) =>
+            i.name.toLowerCase().includes(trimmedQuery) ||
+            (i.description ?? "").toLowerCase().includes(trimmedQuery)
+        ),
+      }))
+      .filter((s) => s.items.length > 0);
+  }, [sections, trimmedQuery]);
+
   const addToCart = (item: MenuItem, portion: CartLine["portion"], qty: number) => {
     const unitPrice =
       portion === "half" ? Number(item.price_half) : Number(item.price_full);
@@ -100,6 +143,7 @@ export default function MenuClient({
       return [...prev, { itemId: item.id, name: item.name, portion, unitPrice, qty }];
     });
     setSent(false);
+    setCheckoutError(null);
   };
 
   const setLineQty = (key: string, qty: number) => {
@@ -122,24 +166,55 @@ export default function MenuClient({
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const handleCheckout = () => {
-    if (lines.length === 0) return;
+  const finishCheckout = (shortId: string | null) => {
     const message = buildOrderMessage({
       businessName,
       currency,
       table,
       lines,
       note,
+      shortId,
     });
     const link = buildWaLink(whatsappNumber, message);
-    markOrderSent(slug);
+    markOrderSent(slug, shortId);
     clearCart(slug);
+    clientKeyRef.current = null; // next order gets a fresh idempotency key
     setLines([]);
     setNote("");
     setDrawerOpen(false);
+    setSentShortId(shortId);
     setSent(true);
     // location.href (not window.open): reliable inside in-app browsers/webviews
     window.location.href = link;
+  };
+
+  const handleCheckout = async () => {
+    if (lines.length === 0 || placing || !orderingOn) return;
+    setPlacing(true);
+    setCheckoutError(null);
+    try {
+      const result = await placeOrder({
+        businessId,
+        table,
+        note,
+        lines,
+        clientKey: ensureClientKey(),
+      });
+      if (result.ok) {
+        finishCheckout(result.shortId);
+      } else if (result.blocked) {
+        // DB deliberately refused (flood cap / closed) — surface it, no send.
+        setCheckoutError(result.error);
+      } else {
+        // Soft failure (network/config): never block a real order — send
+        // to WhatsApp without the order ID line.
+        finishCheckout(null);
+      }
+    } catch {
+      finishCheckout(null);
+    } finally {
+      setPlacing(false);
+    }
   };
 
   return (
@@ -179,6 +254,13 @@ export default function MenuClient({
           <span aria-hidden>✅</span>
           <p className="flex-1">
             Order sent — the restaurant will confirm on WhatsApp.
+            {sentShortId && (
+              <>
+                {" "}
+                Your order ID:{" "}
+                <span className="font-bold">#{sentShortId}</span>.
+              </>
+            )}
           </p>
           <button
             onClick={() => setSent(false)}
@@ -190,23 +272,46 @@ export default function MenuClient({
         </div>
       )}
 
-      {/* Sticky category pills */}
+      {/* Ordering-closed banner */}
+      {!orderingOn && (
+        <div className="mx-4 mb-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+          {orderingEnabled
+            ? "This restaurant isn’t taking orders right now. You can still browse the menu."
+            : "Online ordering isn’t available here — please order with the staff."}
+        </div>
+      )}
+
+      {/* Sticky search + category pills */}
       {sections.length > 0 && (
-        <nav className="no-scrollbar sticky top-0 z-20 flex gap-2 overflow-x-auto border-b border-zinc-100 bg-white px-4 py-2">
-          {sections.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => scrollToSection(s.id)}
-              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-                activeSection === s.id
-                  ? "bg-zinc-900 text-white"
-                  : "bg-zinc-100 text-zinc-700"
-              }`}
-            >
-              {s.name}
-            </button>
-          ))}
-        </nav>
+        <div className="sticky top-0 z-20 border-b border-zinc-100 bg-white">
+          <div className="px-4 pb-2 pt-2">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={`Search ${menuLabel.toLowerCase()}…`}
+              aria-label="Search menu"
+              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm outline-none focus:border-zinc-400"
+            />
+          </div>
+          {!trimmedQuery && (
+            <nav className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-2">
+              {sections.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => scrollToSection(s.id)}
+                  className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+                    activeSection === s.id
+                      ? "bg-zinc-900 text-white"
+                      : "bg-zinc-100 text-zinc-700"
+                  }`}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </nav>
+          )}
+        </div>
       )}
 
       {/* Menu sections */}
@@ -216,7 +321,12 @@ export default function MenuClient({
             {menuLabel} coming soon.
           </p>
         )}
-        {sections.map((section) => (
+        {sections.length > 0 && displaySections.length === 0 && (
+          <p className="py-16 text-center text-sm text-zinc-500">
+            No items match “{query.trim()}”.
+          </p>
+        )}
+        {displaySections.map((section) => (
           <section
             key={section.id}
             id={`section-${section.id}`}
@@ -229,6 +339,7 @@ export default function MenuClient({
                   key={item.id}
                   item={item}
                   currency={currency}
+                  ordering={orderingOn}
                   qtyInCart={qtyInCart(item.id, item.has_portions ? "full" : null)}
                   onAdd={() =>
                     item.has_portions
@@ -247,7 +358,7 @@ export default function MenuClient({
       </main>
 
       {/* Sticky cart bar */}
-      {count > 0 && (
+      {orderingOn && count > 0 && (
         <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-md -translate-x-1/2 p-3">
           <button
             onClick={() => setDrawerOpen(true)}
@@ -346,11 +457,18 @@ export default function MenuClient({
                 </span>
               </div>
 
+              {checkoutError && (
+                <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-center text-sm text-red-700">
+                  {checkoutError}
+                </p>
+              )}
+
               <button
                 onClick={handleCheckout}
-                className="mt-4 w-full rounded-xl bg-wa py-4 text-base font-bold text-white active:bg-wa-dark"
+                disabled={placing}
+                className="mt-4 w-full rounded-xl bg-wa py-4 text-base font-bold text-white active:bg-wa-dark disabled:opacity-60"
               >
-                Place Order on WhatsApp
+                {placing ? "Placing order…" : "Place Order on WhatsApp"}
               </button>
               <p className="mt-2 text-center text-xs text-zinc-400">
                 WhatsApp will open with your order pre-filled — just tap Send.
@@ -411,12 +529,14 @@ function Stepper({
 function ItemCard({
   item,
   currency,
+  ordering,
   qtyInCart,
   onAdd,
   onStep,
 }: {
   item: MenuItem;
   currency: string;
+  ordering: boolean;
   qtyInCart: number;
   onAdd: () => void;
   onStep: (delta: number) => void;
@@ -454,41 +574,44 @@ function ItemCard({
         )}
       </div>
 
-      <div className="flex shrink-0 flex-col items-center gap-1.5 pt-0.5">
-        {item.photo_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={item.photo_url}
-            alt={item.name}
-            loading="lazy"
-            className={`h-20 w-24 rounded-xl border border-zinc-100 object-cover ${
-              soldOut ? "grayscale" : ""
-            }`}
-          />
-        )}
-        {soldOut ? (
-          <button
-            disabled
-            className="rounded-lg border border-zinc-200 px-5 py-1.5 text-sm font-bold text-zinc-300"
-          >
-            ADD
-          </button>
-        ) : !item.has_portions && qtyInCart > 0 ? (
-          <Stepper qty={qtyInCart} onChange={(q) => onStep(q - qtyInCart)} />
-        ) : (
-          <button
-            onClick={onAdd}
-            className="rounded-lg border border-emerald-600 px-5 py-1.5 text-sm font-bold text-emerald-700 active:bg-emerald-50"
-          >
-            ADD
-            {item.has_portions && (
-              <span className="block text-[10px] font-normal text-zinc-400">
-                Half / Full
-              </span>
-            )}
-          </button>
-        )}
-      </div>
+      {(item.photo_url || ordering) && (
+        <div className="flex shrink-0 flex-col items-center gap-1.5 pt-0.5">
+          {item.photo_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.photo_url}
+              alt={item.name}
+              loading="lazy"
+              className={`h-20 w-24 rounded-xl border border-zinc-100 object-cover ${
+                soldOut ? "grayscale" : ""
+              }`}
+            />
+          )}
+          {ordering &&
+            (soldOut ? (
+              <button
+                disabled
+                className="rounded-lg border border-zinc-200 px-5 py-1.5 text-sm font-bold text-zinc-300"
+              >
+                ADD
+              </button>
+            ) : !item.has_portions && qtyInCart > 0 ? (
+              <Stepper qty={qtyInCart} onChange={(q) => onStep(q - qtyInCart)} />
+            ) : (
+              <button
+                onClick={onAdd}
+                className="rounded-lg border border-emerald-600 px-5 py-1.5 text-sm font-bold text-emerald-700 active:bg-emerald-50"
+              >
+                ADD
+                {item.has_portions && (
+                  <span className="block text-[10px] font-normal text-zinc-400">
+                    Half / Full
+                  </span>
+                )}
+              </button>
+            ))}
+        </div>
+      )}
     </article>
   );
 }

@@ -59,21 +59,27 @@ export function cartTotal(lines: CartLine[]): number {
   return lines.reduce((sum, l) => sum + l.unitPrice * l.qty, 0);
 }
 
-/** Flag so we can show "Order sent" if the user comes back to the tab. */
-export function markOrderSent(slug: string): void {
+/**
+ * Flag so we can show "Order sent" if the user comes back to the tab.
+ * Stores the order's short ID when we have one ('1' when we don't).
+ */
+export function markOrderSent(slug: string, shortId: string | null): void {
   try {
-    window.sessionStorage.setItem(sentKey(slug), '1');
+    window.sessionStorage.setItem(sentKey(slug), shortId ?? '1');
   } catch {
     // ignore
   }
 }
 
-export function consumeOrderSent(slug: string): boolean {
+export function consumeOrderSent(
+  slug: string
+): { sent: boolean; shortId: string | null } {
   try {
-    const sent = window.sessionStorage.getItem(sentKey(slug)) === '1';
-    if (sent) window.sessionStorage.removeItem(sentKey(slug));
-    return sent;
+    const raw = window.sessionStorage.getItem(sentKey(slug));
+    if (!raw) return { sent: false, shortId: null };
+    window.sessionStorage.removeItem(sentKey(slug));
+    return { sent: true, shortId: raw === '1' ? null : raw };
   } catch {
-    return false;
+    return { sent: false, shortId: null };
   }
 }

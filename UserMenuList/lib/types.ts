@@ -9,6 +9,14 @@ export type Business = {
   menu_label: string;
   currency: string;
   is_active: boolean;
+  accepting_orders: boolean;
+};
+
+/** Per-business feature flags (admin-controlled, public-readable). */
+export type BusinessFeatures = {
+  ordering_enabled: boolean;
+  testimonials_enabled: boolean;
+  photos_enabled: boolean;
 };
 
 export type Category = {
