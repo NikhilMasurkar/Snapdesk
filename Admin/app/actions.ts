@@ -16,7 +16,8 @@ async function adminAction(
   action: string,
   targetId: string,
   detail: Record<string, unknown>,
-  mutate: (service: ReturnType<typeof createServiceClient>) => Promise<string | null>
+  mutate: (service: ReturnType<typeof createServiceClient>) => Promise<string | null>,
+  opts: { targetType?: string; revalidate?: string[] } = {}
 ): Promise<ActionResult> {
   let adminId: string;
   try {
@@ -29,8 +30,9 @@ async function adminAction(
   const error = await mutate(service);
   if (error) return { ok: false, error };
 
-  await writeAudit(adminId, action, "business", targetId, detail);
+  await writeAudit(adminId, action, opts.targetType ?? "business", targetId, detail);
   revalidatePath("/");
+  for (const p of opts.revalidate ?? []) revalidatePath(p);
   return { ok: true };
 }
 
@@ -117,4 +119,169 @@ export async function deleteRejectedBusiness(id: string): Promise<ActionResult> 
       .eq("status", "rejected"); // only rejected rows are deletable
     return error?.message ?? null;
   });
+}
+
+// ── Business detail control room (§4.3) ──────────────────────────────────────
+
+export type BusinessInfoInput = {
+  name: string;
+  tagline: string;
+  whatsapp_number: string;
+  owner_name: string;
+  owner_phone: string;
+  address: string;
+  city: string;
+  pincode: string;
+  gst_number: string;
+  opening_hours: string;
+  admin_notes: string;
+};
+
+/** Admin edits the application fields (fix typos, update phone) + admin notes. */
+export async function updateBusinessInfo(
+  id: string,
+  input: BusinessInfoInput
+): Promise<ActionResult> {
+  const name = input.name.trim();
+  if (!name) return { ok: false, error: "Business name is required." };
+  const whatsapp = input.whatsapp_number.replace(/\D/g, "");
+  if (whatsapp && (whatsapp.length < 10 || whatsapp.length > 15)) {
+    return { ok: false, error: "WhatsApp number must be 10–15 digits." };
+  }
+
+  return adminAction(
+    "update_business",
+    id,
+    { fields: Object.keys(input) },
+    async (service) => {
+      const { error } = await service
+        .from("businesses")
+        .update({
+          name,
+          tagline: input.tagline.trim() || null,
+          whatsapp_number: whatsapp || null,
+          owner_name: input.owner_name.trim() || null,
+          owner_phone: input.owner_phone.trim() || null,
+          address: input.address.trim() || null,
+          city: input.city.trim() || null,
+          pincode: input.pincode.trim() || null,
+          gst_number: input.gst_number.trim() || null,
+          opening_hours: input.opening_hours.trim() || null,
+          admin_notes: input.admin_notes.trim() || null,
+        })
+        .eq("id", id);
+      return error?.message ?? null;
+    },
+    { revalidate: [`/business/${id}`] }
+  );
+}
+
+/** Re-link a business to an owner account by email (they changed accounts). */
+export async function linkOwnerByEmail(
+  id: string,
+  email: string
+): Promise<ActionResult> {
+  const clean = email.trim().toLowerCase();
+  if (!clean) return { ok: false, error: "Enter the owner's email." };
+
+  return adminAction(
+    "link_owner",
+    id,
+    { email: clean },
+    async (service) => {
+      // Find the auth user by email (admin API — paginated).
+      const { data, error } = await service.auth.admin.listUsers({ perPage: 1000 });
+      if (error) return error.message;
+      const user = data.users.find((u) => u.email?.toLowerCase() === clean);
+      if (!user) return "No account found with that email. They must sign up first.";
+
+      const { error: upErr } = await service
+        .from("businesses")
+        .update({ owner_id: user.id })
+        .eq("id", id);
+      return upErr?.message ?? null;
+    },
+    { revalidate: [`/business/${id}`] }
+  );
+}
+
+export type FeaturesInput = {
+  ordering_enabled: boolean;
+  testimonials_enabled: boolean;
+  photos_enabled: boolean;
+  analytics_enabled: boolean;
+  tables_enabled: boolean;
+  max_menu_items: number;
+};
+
+/** Toggle individual feature flags / item cap for a business. */
+export async function updateFeatures(
+  id: string,
+  input: FeaturesInput
+): Promise<ActionResult> {
+  const cap = Math.floor(Number(input.max_menu_items));
+  if (Number.isNaN(cap) || cap < 1 || cap > 5000) {
+    return { ok: false, error: "Item cap must be between 1 and 5000." };
+  }
+  return adminAction(
+    "update_features",
+    id,
+    { ...input, max_menu_items: cap },
+    async (service) => {
+      const { error } = await service
+        .from("business_features")
+        .update({
+          ordering_enabled: input.ordering_enabled,
+          testimonials_enabled: input.testimonials_enabled,
+          photos_enabled: input.photos_enabled,
+          analytics_enabled: input.analytics_enabled,
+          tables_enabled: input.tables_enabled,
+          max_menu_items: cap,
+        })
+        .eq("business_id", id);
+      return error?.message ?? null;
+    },
+    { revalidate: [`/business/${id}`] }
+  );
+}
+
+/** 10.7 Flag a business as a demo (excluded from platform revenue/stats). */
+export async function setDemo(id: string, isDemo: boolean): Promise<ActionResult> {
+  return adminAction(
+    "set_demo",
+    id,
+    { is_demo: isDemo },
+    async (service) => {
+      const { error } = await service
+        .from("businesses")
+        .update({ is_demo: isDemo })
+        .eq("id", id);
+      return error?.message ?? null;
+    },
+    { revalidate: [`/business/${id}`] }
+  );
+}
+
+/**
+ * The system's ONLY testimonial delete path (§4.3). Audited with the full
+ * text so a legal/abuse removal is always traceable.
+ */
+export async function deleteTestimonial(
+  testimonialId: string,
+  businessId: string,
+  text: string
+): Promise<ActionResult> {
+  return adminAction(
+    "delete_testimonial",
+    testimonialId,
+    { business_id: businessId, text },
+    async (service) => {
+      const { error } = await service
+        .from("testimonials")
+        .delete()
+        .eq("id", testimonialId);
+      return error?.message ?? null;
+    },
+    { targetType: "testimonial", revalidate: [`/business/${businessId}`] }
+  );
 }

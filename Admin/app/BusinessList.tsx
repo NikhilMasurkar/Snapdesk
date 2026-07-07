@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { Business } from "@/lib/types";
 import {
@@ -182,7 +183,9 @@ function PendingCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="font-bold">{b.name}</p>
+            <Link href={`/business/${b.id}`} className="font-bold hover:underline">
+              {b.name}
+            </Link>
             <Tag>{b.type}</Tag>
             <span className="text-xs text-zinc-500">
               applied {new Date(b.created_at).toLocaleDateString()}
@@ -276,7 +279,9 @@ function BusinessInfo({ b, menuBaseUrl }: { b: Business; menuBaseUrl?: string })
   return (
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="font-bold">{b.name}</p>
+        <Link href={`/business/${b.id}`} className="font-bold hover:underline">
+          {b.name}
+        </Link>
         <Tag>{b.type}</Tag>
         {b.is_demo && <Tag>demo</Tag>}
       </div>
