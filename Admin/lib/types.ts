@@ -83,6 +83,16 @@ export type Testimonial = {
   created_at: string;
 };
 
+export type Page = {
+  id: string;
+  slug: string;
+  title: string;
+  content: string;
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AuditRow = {
   id: number;
   admin_user_id: string;

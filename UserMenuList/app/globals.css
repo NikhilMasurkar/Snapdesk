@@ -30,3 +30,16 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Minimal typography for CMS pages (/p/[slug]) — no typography plugin needed */
+.prose-snapdesk h1 { font-size: 1.5rem; font-weight: 700; margin: 1.5rem 0 0.75rem; }
+.prose-snapdesk h2 { font-size: 1.2rem; font-weight: 700; margin: 1.25rem 0 0.5rem; }
+.prose-snapdesk h3 { font-size: 1.05rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+.prose-snapdesk p { margin: 0.75rem 0; }
+.prose-snapdesk ul, .prose-snapdesk ol { margin: 0.75rem 0; padding-left: 1.4rem; }
+.prose-snapdesk ul { list-style: disc; }
+.prose-snapdesk ol { list-style: decimal; }
+.prose-snapdesk li { margin: 0.3rem 0; }
+.prose-snapdesk a { color: #0f766e; text-decoration: underline; }
+.prose-snapdesk strong { font-weight: 700; }
+.prose-snapdesk hr { margin: 1.5rem 0; border-color: #e4e4e7; }

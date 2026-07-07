@@ -1,26 +1,90 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc; /* slate 50 */
+  --foreground: #0f172a; /* slate 900 */
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --border: #e2e8f0; /* slate 200 */
+  --muted: #64748b; /* slate 500 */
+  --muted-bg: #f1f5f9; /* slate 100 */
+  --primary: #4f46e5; /* indigo 600 */
+  --primary-hover: #4338ca; /* indigo 700 */
+  --primary-foreground: #ffffff;
+  --success: #10b981; /* emerald 500 */
+  --success-bg: #ecfdf5; /* emerald 50 */
+  --warning: #d97706; /* amber 600 - better contrast in light mode */
+  --warning-bg: #fffbeb; /* amber 50 */
+  --danger: #e11d48; /* rose 600 - soft but clear contrast */
+  --danger-bg: #fff1f2; /* rose 50 */
+  --info: #0284c7; /* sky 600 */
+  --info-bg: #f0f9ff; /* sky 50 */
+}
+
+.dark {
+  --background: #09090b; /* zinc 950 */
+  --foreground: #f4f4f5; /* zinc 100 */
+  --card: #18181b; /* zinc 900 */
+  --card-foreground: #f4f4f5;
+  --border: #27272a; /* zinc 800 */
+  --muted: #a1a1aa; /* zinc 400 */
+  --muted-bg: #27272a; /* zinc 800 */
+  --primary: #6366f1; /* indigo 500 */
+  --primary-hover: #4f46e5; /* indigo 600 */
+  --primary-foreground: #ffffff;
+  --success: #10b981; /* emerald 500 */
+  --success-bg: #064e3b; /* emerald 950 */
+  --warning: #f59e0b; /* amber 500 */
+  --warning-bg: #78350f; /* amber 950 */
+  --danger: #f43f5e; /* rose 500 */
+  --danger-bg: #4c0519; /* rose 950 */
+  --info: #38bdf8; /* sky 400 */
+  --info-bg: #082f49; /* sky 950 */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-bg: var(--muted-bg);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Custom Scrollbar for modern look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }

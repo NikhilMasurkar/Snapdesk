@@ -500,6 +500,27 @@ create policy "admin read all businesses" on businesses for select using (is_adm
 drop policy if exists "admin read all testimonials" on testimonials;
 create policy "admin read all testimonials" on testimonials for select using (is_admin());
 
+-- ── 3.9 CMS pages (privacy, terms, anything) — admin-authored, publicly read ─
+-- Markdown content, editable only in the Admin app (service role). The public
+-- menu app and the future mobile app read published pages via the anon key.
+create table if not exists pages (
+  id uuid primary key default gen_random_uuid(),
+  slug text unique not null check (slug ~ '^[a-z0-9-]+$'),
+  title text not null check (char_length(title) <= 120),
+  content text not null default '',
+  is_published boolean not null default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+alter table pages enable row level security;
+-- Anyone (anon) can read a PUBLISHED page; drafts stay admin-only.
+drop policy if exists "public read published pages" on pages;
+create policy "public read published pages" on pages
+  for select using (is_published = true);
+drop policy if exists "admin read all pages" on pages;
+create policy "admin read all pages" on pages for select using (is_admin());
+-- Writes: service role only (no anon/owner write policy).
+
 -- ============================================================================
 -- MANUAL STEPS after running this file:
 --

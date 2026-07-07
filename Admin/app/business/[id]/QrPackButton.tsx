@@ -30,7 +30,6 @@ export default function QrPackButton({
   const generate = async () => {
     setBusy(true);
     try {
-      // One card per table + one Counter card (no ?table param).
       const cards: { label: string; url: string }[] = [];
       for (let i = 1; i <= tableCount; i++) {
         cards.push({
@@ -44,7 +43,6 @@ export default function QrPackButton({
       const font = await pdf.embedFont(StandardFonts.Helvetica);
       const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-      // A4 portrait, 2 columns × 3 rows of cards.
       const A4 = { w: 595.28, h: 841.89 };
       const margin = 36;
       const cols = 2;
@@ -61,10 +59,8 @@ export default function QrPackButton({
         const col = slot % cols;
         const row = Math.floor(slot / cols);
         const x = margin + col * cardW;
-        // PDF origin is bottom-left; lay rows top→down.
         const yTop = A4.h - margin - row * cardH;
 
-        // Card border
         page.drawRectangle({
           x: x + 6,
           y: yTop - cardH + 6,
@@ -74,7 +70,6 @@ export default function QrPackButton({
           borderWidth: 1,
         });
 
-        // Business name
         const nameSize = 13;
         const nameWidth = bold.widthOfTextAtSize(businessName, nameSize);
         page.drawText(businessName, {
@@ -85,7 +80,6 @@ export default function QrPackButton({
           color: rgb(0.1, 0.1, 0.1),
         });
 
-        // QR
         const qrDataUrl = await QRCode.toDataURL(cards[idx].url, {
           width: 300,
           margin: 1,
@@ -98,7 +92,6 @@ export default function QrPackButton({
           height: qrSize,
         });
 
-        // Table label
         const labelSize = 16;
         const labelWidth = bold.widthOfTextAtSize(cards[idx].label, labelSize);
         page.drawText(cards[idx].label, {
@@ -109,7 +102,6 @@ export default function QrPackButton({
           color: rgb(0.1, 0.1, 0.1),
         });
 
-        // Instruction
         const instr = "Scan to view menu & order";
         const instrSize = 9;
         const instrWidth = font.widthOfTextAtSize(instr, instrSize);
@@ -123,7 +115,6 @@ export default function QrPackButton({
       }
 
       const bytes = await pdf.save();
-      // Copy into a fresh ArrayBuffer-backed view so the Blob typing is happy.
       const blob = new Blob([bytes.slice()], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -140,9 +131,24 @@ export default function QrPackButton({
     <button
       onClick={generate}
       disabled={busy || tableCount < 1}
-      className="rounded-lg bg-white px-4 py-2 text-xs font-bold text-zinc-950 hover:bg-zinc-200 disabled:opacity-50"
+      className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-4 py-3 text-xs font-bold text-primary-foreground shadow-md hover:shadow-primary/20 transition-all cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
     >
-      {busy ? "Generating…" : `Generate QR PDF (${tableCount + 1} cards)`}
+      {busy ? (
+        <>
+          <svg className="animate-spin h-4 w-4 text-current" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          Generating PDF Cards…
+        </>
+      ) : (
+        <>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="size-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.617 0-1.11-.461-1.12-1.078L5.82 18m12.06 0H6.12m1.724-4.171L8.52 4.5A2.25 2.25 0 0 1 10.758 2.25h2.484A2.25 2.25 0 0 1 15.48 4.5l.675 9.329m-8.314-1.2h.008v.008H7.842v-.008Zm4.186 0h.008v.008h-.008v-.008Zm4.187 0h.008v.008h-.008v-.008Z" />
+          </svg>
+          Generate QR PDF ({tableCount + 1} cards)
+        </>
+      )}
     </button>
   );
 }

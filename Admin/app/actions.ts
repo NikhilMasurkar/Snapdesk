@@ -285,3 +285,100 @@ export async function deleteTestimonial(
     { targetType: "testimonial", revalidate: [`/business/${businessId}`] }
   );
 }
+
+// ── CMS pages (privacy, terms, …) ────────────────────────────────────────────
+
+const SLUG_RE = /^[a-z0-9-]+$/;
+
+export type PageInput = {
+  slug: string;
+  title: string;
+  content: string;
+  is_published: boolean;
+};
+
+function validatePage(input: PageInput): string | null {
+  if (!input.title.trim()) return "Title is required.";
+  if (!SLUG_RE.test(input.slug)) return "Slug must be lowercase letters, numbers, and hyphens.";
+  return null;
+}
+
+export async function createPage(
+  input: PageInput
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const err = validatePage(input);
+  if (err) return { ok: false, error: err };
+
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, error: "Not authorized." };
+  }
+  const service = createServiceClient();
+  const { data, error } = await service
+    .from("pages")
+    .insert({
+      slug: input.slug.trim(),
+      title: input.title.trim(),
+      content: input.content,
+      is_published: input.is_published,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    return {
+      ok: false,
+      error: error.code === "23505" ? "That slug is already taken." : error.message,
+    };
+  }
+  const id = (data as { id: string }).id;
+  const res = await adminAction(
+    "create_page",
+    id,
+    { slug: input.slug, title: input.title },
+    async () => null,
+    { targetType: "page", revalidate: ["/pages"] }
+  );
+  return res.ok ? { ok: true, id } : res;
+}
+
+export async function updatePage(id: string, input: PageInput): Promise<ActionResult> {
+  const err = validatePage(input);
+  if (err) return { ok: false, error: err };
+  return adminAction(
+    "update_page",
+    id,
+    { slug: input.slug, is_published: input.is_published },
+    async (service) => {
+      const { error } = await service
+        .from("pages")
+        .update({
+          slug: input.slug.trim(),
+          title: input.title.trim(),
+          content: input.content,
+          is_published: input.is_published,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id);
+      if (error) {
+        return error.code === "23505" ? "That slug is already taken." : error.message;
+      }
+      return null;
+    },
+    { targetType: "page", revalidate: ["/pages", `/pages/${id}`] }
+  );
+}
+
+export async function deletePage(id: string): Promise<ActionResult> {
+  return adminAction(
+    "delete_page",
+    id,
+    {},
+    async (service) => {
+      const { error } = await service.from("pages").delete().eq("id", id);
+      return error?.message ?? null;
+    },
+    { targetType: "page", revalidate: ["/pages"] }
+  );
+}

@@ -23,6 +23,7 @@ export function timeWindows() {
     todayStart: new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString(),
     days30: new Date(now.getTime() - 30 * 864e5).toISOString(),
     days14: new Date(now.getTime() - 14 * 864e5).toISOString(),
+    days60: new Date(now.getTime() - 60 * 864e5).toISOString(),
   };
 }
 
