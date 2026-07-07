@@ -1,5 +1,5 @@
 import { Ban, Clock, LogOut, Mail, PauseCircle } from "lucide-react";
-import { getOwnerBusiness, requireUser } from "@/lib/dal";
+import { getOwnerBusiness, getOwnerFeatures, requireUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
@@ -121,20 +121,29 @@ export default async function DashboardLayout({
     );
   }
 
-  // Fetch pending testimonials count for navigation badge
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("testimonials")
-    .select("*", { count: "exact", head: true })
-    .eq("business_id", business.id)
-    .eq("status", "pending");
+  const features = await getOwnerFeatures(business.id);
+  const [{ count: testimonialCount }, { count: orderCount }] = await Promise.all([
+    supabase
+      .from("testimonials")
+      .select("*", { count: "exact", head: true })
+      .eq("business_id", business.id)
+      .eq("status", "pending"),
+    supabase
+      .from("orders")
+      .select("*", { count: "exact", head: true })
+      .eq("business_id", business.id)
+      .eq("status", "pending"),
+  ]);
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row bg-background">
       <Sidebar
         business={business}
         user={user}
-        pendingTestimonialsCount={count ?? 0}
+        features={features}
+        pendingTestimonialsCount={testimonialCount ?? 0}
+        pendingOrdersCount={orderCount ?? 0}
         liveMenuUrl={`${MENU_BASE_URL}/m/${business.slug}`}
       />
       <main className="flex-1 bg-muted/20 min-h-[calc(100vh-4rem)] md:min-h-screen p-4 sm:p-6 md:p-8 overflow-y-auto">

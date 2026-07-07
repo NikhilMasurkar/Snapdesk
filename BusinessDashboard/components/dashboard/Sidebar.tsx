@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   ChevronsUpDown,
   ExternalLink,
+  LayoutGrid,
   LogOut,
   Menu,
   MessageSquareQuote,
@@ -22,7 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Business } from "@/lib/types";
+import type { Business, BusinessFeatures } from "@/lib/types";
 import { logout } from "@/app/login/actions";
 
 type SidebarProps = {
@@ -31,28 +32,48 @@ type SidebarProps = {
     id: string;
     email?: string;
   };
+  features: BusinessFeatures;
   pendingTestimonialsCount: number;
+  pendingOrdersCount: number;
   liveMenuUrl: string;
 };
 
 export default function Sidebar({
   business,
   user,
+  features,
   pendingTestimonialsCount,
+  pendingOrdersCount,
   liveMenuUrl,
 }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navItems = [
-    { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed },
-    {
-      href: "/dashboard/testimonials",
-      label: "Testimonials",
-      icon: MessageSquareQuote,
-      badge: pendingTestimonialsCount > 0 ? pendingTestimonialsCount : null,
-    },
-    { href: "/dashboard/settings", label: "Settings", icon: Settings },
+    // Tables hidden for counter-mode businesses (tables_enabled=false).
+    ...(features.tables_enabled
+      ? [
+          {
+            href: "/dashboard/tables",
+            label: "Tables",
+            icon: LayoutGrid,
+            badge: pendingOrdersCount > 0 ? pendingOrdersCount : null,
+          },
+        ]
+      : []),
+    { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed, badge: null },
+    // Reviews hidden when testimonials are disabled for this plan.
+    ...(features.testimonials_enabled
+      ? [
+          {
+            href: "/dashboard/testimonials",
+            label: "Testimonials",
+            icon: MessageSquareQuote,
+            badge: pendingTestimonialsCount > 0 ? pendingTestimonialsCount : null,
+          },
+        ]
+      : []),
+    { href: "/dashboard/settings", label: "Settings", icon: Settings, badge: null },
   ];
 
   const handleLogout = async () => {
