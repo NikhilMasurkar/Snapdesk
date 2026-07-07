@@ -263,6 +263,79 @@ begin
 exception when duplicate_object then null;
 end $$;
 
+-- Customer order placement RPC (security definer): the anon role has NO select
+-- policy on orders (only owners/admins read them), so a direct
+-- `insert ... returning short_id` from the public menu fails the read-back.
+-- This function inserts and returns the short_id, re-checking the same gate as
+-- the "public create order" policy so security is preserved. Idempotent on
+-- client_key (double-tap / network retry safe); the pending-cap trigger still
+-- fires and the flood-control message propagates to the caller.
+create or replace function place_order(
+  p_business_id uuid,
+  p_table_no text,
+  p_items jsonb,
+  p_total numeric,
+  p_note text,
+  p_client_key uuid
+) returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_ok boolean;
+  v_short text;
+  v_existing text;
+  i int;
+begin
+  -- Idempotency: an identical prior request already placed this order.
+  if p_client_key is not null then
+    select short_id into v_existing from orders where client_key = p_client_key;
+    if v_existing is not null then return v_existing; end if;
+  end if;
+
+  -- Same gate as the public insert policy: approved + active + open + ordering on.
+  select exists (
+    select 1 from businesses b
+    join business_features f on f.business_id = b.id
+    where b.id = p_business_id
+      and b.status = 'approved' and b.is_active = true
+      and b.accepting_orders = true and f.ordering_enabled = true
+  ) into v_ok;
+  if not v_ok then
+    raise exception 'This business is not taking orders right now.'
+      using errcode = 'P0001';
+  end if;
+
+  -- Insert; retry on the (rare) short_id collision.
+  for i in 1..8 loop
+    v_short := (
+      select string_agg(
+        substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789',
+               floor(random() * 32)::int + 1, 1), '')
+      from generate_series(1, 4)
+    );
+    begin
+      insert into orders (short_id, business_id, table_no, items, total, note,
+                          client_key, status, source)
+      values (v_short, p_business_id, p_table_no, p_items, p_total, p_note,
+              p_client_key, 'pending', 'customer');
+      return v_short;
+    exception when unique_violation then
+      -- client_key race → return the winner; else short_id clash → loop.
+      if p_client_key is not null then
+        select short_id into v_existing from orders where client_key = p_client_key;
+        if v_existing is not null then return v_existing; end if;
+      end if;
+    end;
+  end loop;
+  raise exception 'Could not place the order. Please try again.'
+    using errcode = 'P0001';
+end $$;
+
+grant execute on function place_order(uuid, text, jsonb, numeric, text, uuid)
+  to anon, authenticated;
+
 -- ── 3.5 Bills (+10.4 void) ──────────────────────────────────────────────────
 
 create table if not exists bills (

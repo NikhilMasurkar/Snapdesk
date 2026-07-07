@@ -6,17 +6,6 @@ import type { CartLine } from "@/lib/cart";
 
 // ── Orders ───────────────────────────────────────────────────────────────────
 
-// No 0/O/1/I — unambiguous when read over the phone or from a WhatsApp message.
-const SHORT_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-function makeShortId(): string {
-  let id = "";
-  for (let i = 0; i < 4; i++) {
-    id += SHORT_ID_ALPHABET[Math.floor(Math.random() * SHORT_ID_ALPHABET.length)];
-  }
-  return id;
-}
-
 export type PlaceOrderInput = {
   businessId: string;
   table: string | null;
@@ -63,54 +52,29 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
   const supabase = getSupabase();
 
-  // Retry a few times on short_id collision (4 chars from a 32-char alphabet
-  // → collisions are rare but possible).
-  for (let attempt = 0; attempt < 4; attempt++) {
-    const { data, error } = await supabase
-      .from("orders")
-      .insert({
-        short_id: makeShortId(),
-        business_id: input.businessId,
-        table_no: table,
-        items,
-        total,
-        note: note || null,
-        client_key: input.clientKey || null,
-      })
-      .select("short_id")
-      .single();
+  // Placed via the `place_order` RPC (security definer): anon has no SELECT
+  // policy on orders, so a direct insert+returning fails the read-back. The
+  // RPC re-checks the business gate, dedupes on client_key, and returns the
+  // short_id. See BusinessDashboard/supabase/phase3.sql.
+  const { data, error } = await supabase.rpc("place_order", {
+    p_business_id: input.businessId,
+    p_table_no: table,
+    p_items: items,
+    p_total: total,
+    p_note: note || null,
+    p_client_key: input.clientKey || null,
+  });
 
-    if (!error) return { ok: true, shortId: (data as { short_id: string }).short_id };
-
-    if (error.code === "23505") {
-      // Unique violation: either a double-tap (client_key) or a short_id clash.
-      if (error.message.includes("client_key")) {
-        const { data: existing } = await supabase
-          .from("orders")
-          .select("short_id")
-          .eq("client_key", input.clientKey)
-          .maybeSingle();
-        if (existing) return { ok: true, shortId: existing.short_id as string };
-        return { ok: false, error: "Could not place the order.", blocked: false };
-      }
-      continue; // short_id collision — try a fresh one
-    }
-
-    if (error.code === "P0001") {
-      // Our own trigger (pending-order cap) — its message is customer-friendly.
-      return { ok: false, error: error.message, blocked: true };
-    }
-    if (error.code === "42501") {
-      // RLS refused: ordering closed / business offline since page load.
-      return {
-        ok: false,
-        error: "This business is not taking orders right now.",
-        blocked: true,
-      };
-    }
-    // Anything else (network, config): don't block a real order.
-    return { ok: false, error: "Could not record the order.", blocked: false };
+  if (!error && typeof data === "string" && data.length > 0) {
+    return { ok: true, shortId: data };
   }
+
+  if (error?.code === "P0001") {
+    // Our RPC / pending-cap trigger raised a customer-friendly message
+    // (ordering closed or too many pending orders).
+    return { ok: false, error: error.message, blocked: true };
+  }
+  // Anything else (network, config): don't block a real order.
   return { ok: false, error: "Could not record the order.", blocked: false };
 }
 
