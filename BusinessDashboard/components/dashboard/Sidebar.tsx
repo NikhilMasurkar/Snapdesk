@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   MessageSquareQuote,
+  Receipt,
   Settings,
   UtensilsCrossed,
   X,
@@ -60,6 +61,10 @@ export default function Sidebar({
             badge: pendingOrdersCount > 0 ? pendingOrdersCount : null,
           },
         ]
+      : []),
+    // Orders history: relevant wherever orders happen (customer or staff).
+    ...(features.ordering_enabled || features.tables_enabled
+      ? [{ href: "/dashboard/orders", label: "Orders", icon: Receipt, badge: null }]
       : []),
     { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed, badge: null },
     // Reviews hidden when testimonials are disabled for this plan.

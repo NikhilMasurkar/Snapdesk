@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!business) return { title: "Menu not available" };
   return {
     title: `${business.name} – ${business.menu_label}`,
-    description: business.tagline ?? `Order from ${business.name} on WhatsApp`,
+    description: business.tagline ?? `Order from ${business.name}`,
   };
 }
 
@@ -130,7 +130,6 @@ export default async function MenuPage({ params, searchParams }: PageProps) {
         slug={business.slug}
         businessId={business.id}
         businessName={business.name}
-        whatsappNumber={business.whatsapp_number}
         currency={business.currency}
         logoUrl={business.logo_url}
         tagline={business.tagline}

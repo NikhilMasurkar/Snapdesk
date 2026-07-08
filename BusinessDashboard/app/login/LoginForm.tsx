@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import GoogleButton from "./GoogleButton";
 import { login, signup } from "./actions";
 
 export default function LoginForm({ justCreated }: { justCreated: boolean }) {
@@ -20,7 +21,15 @@ export default function LoginForm({ justCreated }: { justCreated: boolean }) {
   const [signupState, signupAction, signupPending] = useActionState(signup, undefined);
 
   return (
-    <Tabs defaultValue="login" className="w-full max-w-sm">
+    <div className="flex w-full max-w-sm flex-col gap-4">
+      <GoogleButton />
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        or continue with email
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <Tabs defaultValue="login" className="w-full">
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="login">Log in</TabsTrigger>
         <TabsTrigger value="signup">Create account</TabsTrigger>
@@ -118,6 +127,7 @@ export default function LoginForm({ justCreated }: { justCreated: boolean }) {
           </CardContent>
         </Card>
       </TabsContent>
-    </Tabs>
+      </Tabs>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getAdmin } from "@/lib/admin";
+import { canManageTeam } from "@/lib/roles";
 import { createServiceClient } from "@/lib/service";
 import { logout } from "@/app/login/actions";
 import { money, dailySeries, timeWindows } from "@/lib/analytics";
@@ -12,7 +13,7 @@ const MENU_BASE_URL =
   process.env.NEXT_PUBLIC_MENU_BASE_URL ?? "https://snapdesk-tan.vercel.app";
 
 export default async function AdminPage() {
-  const { user, isAdmin } = await getAdmin();
+  const { user, isAdmin, role } = await getAdmin();
 
   if (!isAdmin) {
     return (
@@ -153,6 +154,14 @@ export default async function AdminPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {canManageTeam(role) && (
+              <Link
+                href="/team"
+                className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-bold text-foreground hover:bg-muted-bg hover:border-muted/50 shadow-sm transition-all"
+              >
+                Team
+              </Link>
+            )}
             <Link
               href="/pages"
               className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-bold text-foreground hover:bg-muted-bg hover:border-muted/50 shadow-sm transition-all"

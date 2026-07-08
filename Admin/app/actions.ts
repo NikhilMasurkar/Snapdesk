@@ -211,6 +211,7 @@ export type FeaturesInput = {
   photos_enabled: boolean;
   analytics_enabled: boolean;
   tables_enabled: boolean;
+  qr_download_enabled: boolean;
   max_menu_items: number;
 };
 
@@ -236,6 +237,7 @@ export async function updateFeatures(
           photos_enabled: input.photos_enabled,
           analytics_enabled: input.analytics_enabled,
           tables_enabled: input.tables_enabled,
+          qr_download_enabled: input.qr_download_enabled,
           max_menu_items: cap,
         })
         .eq("business_id", id);

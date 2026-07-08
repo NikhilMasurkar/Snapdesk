@@ -18,6 +18,8 @@ const ACTION_LABEL: Record<string, string> = {
   create_page: "Created page",
   update_page: "Updated page",
   delete_page: "Deleted page",
+  set_admin_role: "Set admin role",
+  remove_admin: "Removed admin",
 };
 
 export default async function AuditPage() {

@@ -14,14 +14,12 @@ import {
   markOrderSent,
   saveCart,
 } from "@/lib/cart";
-import { buildOrderMessage, buildWaLink } from "@/lib/whatsapp";
 import { placeOrder } from "./actions";
 
 type Props = {
   slug: string;
   businessId: string;
   businessName: string;
-  whatsappNumber: string;
   currency: string;
   logoUrl: string | null;
   tagline: string | null;
@@ -38,7 +36,6 @@ export default function MenuClient({
   slug,
   businessId,
   businessName,
-  whatsappNumber,
   currency,
   logoUrl,
   tagline,
@@ -166,16 +163,7 @@ export default function MenuClient({
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const finishCheckout = (shortId: string | null) => {
-    const message = buildOrderMessage({
-      businessName,
-      currency,
-      table,
-      lines,
-      note,
-      shortId,
-    });
-    const link = buildWaLink(whatsappNumber, message);
+  const confirmOrder = (shortId: string) => {
     markOrderSent(slug, shortId);
     clearCart(slug);
     clientKeyRef.current = null; // next order gets a fresh idempotency key
@@ -184,8 +172,6 @@ export default function MenuClient({
     setDrawerOpen(false);
     setSentShortId(shortId);
     setSent(true);
-    // location.href (not window.open): reliable inside in-app browsers/webviews
-    window.location.href = link;
   };
 
   const handleCheckout = async () => {
@@ -201,17 +187,17 @@ export default function MenuClient({
         clientKey: ensureClientKey(),
       });
       if (result.ok) {
-        finishCheckout(result.shortId);
-      } else if (result.blocked) {
-        // DB deliberately refused (flood cap / closed) — surface it, no send.
-        setCheckoutError(result.error);
+        // The order is now on the owner's live table grid — that's the record.
+        confirmOrder(result.shortId);
       } else {
-        // Soft failure (network/config): never block a real order — send
-        // to WhatsApp without the order ID line.
-        finishCheckout(null);
+        // Blocked (flood cap / closed) or a transient failure: keep the cart
+        // so the customer can retry. No WhatsApp fallback anymore.
+        setCheckoutError(
+          result.error || "Couldn't place your order. Please try again."
+        );
       }
     } catch {
-      finishCheckout(null);
+      setCheckoutError("Couldn't place your order. Please try again.");
     } finally {
       setPlacing(false);
     }
@@ -253,7 +239,7 @@ export default function MenuClient({
         <div className="mx-4 mb-2 flex items-start gap-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
           <span aria-hidden>✅</span>
           <p className="flex-1">
-            Order sent — the restaurant will confirm on WhatsApp.
+            Order placed — the restaurant has received it.
             {sentShortId && (
               <>
                 {" "}
@@ -468,10 +454,11 @@ export default function MenuClient({
                 disabled={placing}
                 className="mt-4 w-full rounded-xl bg-wa py-4 text-base font-bold text-white active:bg-wa-dark disabled:opacity-60"
               >
-                {placing ? "Placing order…" : "Place Order on WhatsApp"}
+                {placing ? "Placing order…" : "Place Order"}
               </button>
               <p className="mt-2 text-center text-xs text-zinc-400">
-                WhatsApp will open with your order pre-filled — just tap Send.
+                Your order goes straight to the restaurant. Note your order ID
+                to check on it.
               </p>
             </>
           )}

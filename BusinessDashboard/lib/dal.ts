@@ -52,6 +52,7 @@ export const getOwnerFeatures = cache(
         photos_enabled: true,
         analytics_enabled: false,
         tables_enabled: true,
+        qr_download_enabled: false,
         max_menu_items: 30,
       }
     );

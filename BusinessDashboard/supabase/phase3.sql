@@ -22,6 +22,16 @@ create table if not exists admin_users (
 alter table admin_users enable row level security;
 -- No policies = unreachable via anon/authenticated keys.
 
+-- Per-admin role for the Admin site's RBAC. Any row = can sign into /admin;
+-- the role decides what they see (see Admin/lib/roles.ts). superadmin + admin
+-- pass every capability check.
+alter table admin_users add column if not exists role text not null default 'admin'
+  check (role in (
+    'superadmin', 'admin', 'snap_manager',
+    'snap_sales_manager', 'snap_sales_member', 'snap_employee',
+    'analytics_revenue', 'analytics_users'
+  ));
+
 create or replace function is_admin()
 returns boolean language sql security definer stable as $$
   select exists (select 1 from admin_users where user_id = auth.uid());
@@ -119,6 +129,9 @@ create table if not exists business_features (
   max_menu_items int not null default 30,
   updated_at timestamptz default now()
 );
+-- Admin grants an owner the ability to download their own QR pack (default off:
+-- QR codes are admin-issued; this opt-in lets trusted owners self-serve).
+alter table business_features add column if not exists qr_download_enabled boolean not null default false;
 alter table business_features enable row level security;
 drop policy if exists "public read features" on business_features;
 create policy "public read features" on business_features for select using (true);

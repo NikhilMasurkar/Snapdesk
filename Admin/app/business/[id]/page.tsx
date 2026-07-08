@@ -33,6 +33,7 @@ export default async function OverviewTab({
       photos_enabled: true,
       analytics_enabled: false,
       tables_enabled: true,
+      qr_download_enabled: false,
       max_menu_items: 30,
     };
   const testimonials = (testiRes.data ?? []) as Testimonial[];

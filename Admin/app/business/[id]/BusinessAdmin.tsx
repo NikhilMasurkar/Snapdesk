@@ -417,6 +417,7 @@ function FeaturesEditor({
     photos_enabled: f.photos_enabled,
     analytics_enabled: f.analytics_enabled,
     tables_enabled: f.tables_enabled,
+    qr_download_enabled: f.qr_download_enabled,
     max_menu_items: f.max_menu_items,
   });
 
@@ -444,6 +445,7 @@ function FeaturesEditor({
     ["photos_enabled", "Menu Photos Support", "Allows menu items to upload and display image files"],
     ["analytics_enabled", "Dashboard Analytics", "Unlocks analytical reports and scans logs for owner"],
     ["tables_enabled", "Tables Management Grid", "Enables floorplan structure and QR associations"],
+    ["qr_download_enabled", "Owner QR Download", "Lets the owner download their own table QR pack"],
   ];
 
   return (

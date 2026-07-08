@@ -18,7 +18,7 @@ export type PlaceOrderInput = {
 export type PlaceOrderResult =
   | { ok: true; shortId: string }
   /** blocked=true means the DB deliberately refused (flood cap / ordering
-   *  closed) — show the error instead of proceeding to WhatsApp. */
+   *  closed); either way the client shows the error and keeps the cart. */
   | { ok: false; error: string; blocked: boolean };
 
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {

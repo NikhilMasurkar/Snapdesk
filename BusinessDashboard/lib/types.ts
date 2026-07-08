@@ -30,6 +30,7 @@ export type BusinessFeatures = {
   photos_enabled: boolean;
   analytics_enabled: boolean;
   tables_enabled: boolean;
+  qr_download_enabled: boolean;
   max_menu_items: number;
 };
 
