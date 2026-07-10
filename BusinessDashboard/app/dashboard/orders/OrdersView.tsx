@@ -65,7 +65,7 @@ export default function OrdersView({
     if (!query) return bills;
     return bills.filter(
       (b) =>
-        b.bill_no.toLowerCase().includes(query) ||
+        String(b.bill_no).toLowerCase().includes(query) ||
         (b.table_no ?? "").toLowerCase().includes(query)
     );
   }, [bills, deferredQ]);
