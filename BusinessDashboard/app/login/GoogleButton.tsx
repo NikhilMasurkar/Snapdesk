@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import Properties from "@/lib/properties";
 
 export default function GoogleButton() {
   const [loading, setLoading] = useState(false);
@@ -12,7 +13,7 @@ export default function GoogleButton() {
     setLoading(true);
     const { error } = await createClient().auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${Properties.BASE_URL}/auth/callback` },
     });
     // On success the browser navigates to Google; only reset on failure.
     if (error) setLoading(false);

@@ -48,6 +48,12 @@ type Props = {
   initialOrders: Order[];
 };
 
+function ordersSignature(orders: Order[]): string {
+  return orders
+    .map((o) => `${o.id}:${o.status}:${o.total}:${o.items.length}`)
+    .join("|");
+}
+
 export default function TablesGrid({
   businessId,
   tableCount,
@@ -63,11 +69,12 @@ export default function TablesGrid({
   // Order currently being rejected — shows the reason chips (§0.2).
   const [rejecting, setRejecting] = useState<string | null>(null);
 
-  // Keep local state in sync if the server component re-renders (revalidate).
-  const initialRef = useRef(initialOrders);
+  // Keep local state in sync if the server component re-renders with actual changes.
+  const initialSigRef = useRef(ordersSignature(initialOrders));
   useEffect(() => {
-    if (initialRef.current !== initialOrders) {
-      initialRef.current = initialOrders;
+    const sig = ordersSignature(initialOrders);
+    if (initialSigRef.current !== sig) {
+      initialSigRef.current = sig;
       setOrders(initialOrders);
     }
   }, [initialOrders]);
@@ -168,15 +175,14 @@ export default function TablesGrid({
     };
   }, [businessId, notify]);
 
-  // Returning to the tab: stop the flash and re-sync from the server.
+  // Returning to the tab: stop the flash (Realtime keeps orders live).
   useEffect(() => {
     const onFocus = () => {
       stopFlash();
-      router.refresh();
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [router, stopFlash]);
+  }, [stopFlash]);
 
   useEffect(() => () => stopFlash(), [stopFlash]);
 

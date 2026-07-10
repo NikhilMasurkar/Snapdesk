@@ -54,7 +54,7 @@ export async function editOrderItems(
     .eq("status", "approved");
 
   if (error) return fail(error.message);
-  revalidatePath("/dashboard/tables", "layout");
+  revalidatePath("/dashboard/tables");
   return ok;
 }
 

@@ -65,6 +65,17 @@ type MergedLine = {
   contributors: string[]; // order ids that carry this line, oldest → newest
 };
 
+function ordersSignature(orders: Order[]): string {
+  return orders
+    .map(
+      (o) =>
+        `${o.id}:${o.status}:${o.total}:${o.items
+          .map((i) => `${i.name}|${i.qty}|${i.line_total}`)
+          .join(",")}`
+    )
+    .join("|");
+}
+
 export default function TableDetail({
   businessId,
   currency,
@@ -84,10 +95,11 @@ export default function TableDetail({
   const [clearing, setClearing] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
-  const initialRef = useRef(initialOrders);
+  const initialSigRef = useRef(ordersSignature(initialOrders));
   useEffect(() => {
-    if (initialRef.current !== initialOrders) {
-      initialRef.current = initialOrders;
+    const sig = ordersSignature(initialOrders);
+    if (initialSigRef.current !== sig) {
+      initialSigRef.current = sig;
       setOrders(initialOrders);
     }
   }, [initialOrders]);
@@ -196,15 +208,13 @@ export default function TableDetail({
   const bump = async (line: MergedLine, delta: 1 | -1) => {
     // Apply to the newest contributing order so edits are deterministic.
     const orderId = line.contributors[line.contributors.length - 1];
-    setBusyKey(line.key);
-    await mutateOrder(orderId, (items) =>
+    void mutateOrder(orderId, (items) =>
       items
         .map((it) =>
           sameLine(it, line) ? { ...it, qty: it.qty + delta } : it
         )
         .filter((it) => it.qty > 0)
     );
-    setBusyKey(null);
   };
 
   const removeLine = async (line: MergedLine) => {

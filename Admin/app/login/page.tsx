@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import Properties from "@/lib/properties";
 import ThemeToggle from "../_components/ThemeToggle";
 
 export default function LoginPage() {
@@ -13,7 +14,7 @@ export default function LoginPage() {
     setError(null);
     const { error } = await createClient().auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${Properties.BASE_URL}/auth/callback` },
     });
     // On success the browser navigates to Google; only reset on failure.
     if (error) {
