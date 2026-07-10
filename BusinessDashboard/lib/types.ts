@@ -21,6 +21,7 @@ export type Business = {
   gst_number: string | null;
   opening_hours: string | null;
   owner_id: string | null;
+  timezone: string;
 };
 
 export type BusinessFeatures = {
@@ -51,7 +52,8 @@ export type Order = {
   items: OrderItemLine[];
   total: number;
   note: string | null;
-  status: "pending" | "approved" | "rejected" | "billed";
+  status: "pending" | "approved" | "rejected" | "billed" | "cancelled";
+  status_reason: string | null;
   source: "customer" | "staff";
   bill_id: string | null;
   created_at: string;

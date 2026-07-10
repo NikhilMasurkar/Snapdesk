@@ -1,48 +1,39 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { login } from "./actions";
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import ThemeToggle from "../_components/ThemeToggle";
 
 export default function LoginPage() {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const signIn = async () => {
+    setLoading(true);
     setError(null);
-    const formData = new FormData(e.currentTarget);
-    startTransition(async () => {
-      const result = await login(formData);
-      if (result && !result.ok) setError(result.error);
+    const { error } = await createClient().auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
+    // On success the browser navigates to Google; only reset on failure.
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
   };
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center bg-background px-4 transition-colors duration-200">
-      {/* Top right theme toggle */}
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
 
-      {/* Background visual detail */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-primary/10 blur-3xl -z-10 pointer-events-none" />
 
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-xl transition-all duration-200 hover:shadow-2xl hover:border-muted/50"
-      >
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-xl transition-all duration-200 hover:shadow-2xl hover:border-muted/50">
         <div className="flex flex-col items-center text-center mb-8">
-          {/* Logo / Badge */}
           <div className="flex items-center justify-center size-12 rounded-xl bg-primary/10 text-primary mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="size-6"
-            >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-6">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -59,126 +50,38 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="space-y-5">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
-              Email Address
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted pointer-events-none">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="size-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-                  />
-                </svg>
-              </span>
-              <input
-                name="email"
-                type="email"
-                required
-                autoComplete="email"
-                placeholder="admin@snapdesk.com"
-                className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted/60 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-muted mb-1.5">
-              Password
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted pointer-events-none">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="size-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0V10.5m-2.853 4.887a4.5 4.5 0 0 0-3.328 4.417h16.362a4.5 4.5 0 0 0-3.328-4.417m-10.457 0A6.745 6.745 0 0 1 12 9a6.745 6.745 0 0 1 5.708 3.324m-11.416 0A7.228 7.228 0 0 0 6 12a7.228 7.228 0 0 0 6 6c3.125 0 5.679-1.996 6.543-4.786"
-                  />
-                </svg>
-              </span>
-              <input
-                name="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                placeholder="••••••••"
-                className="w-full rounded-xl border border-border bg-background pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted/60 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-              />
-            </div>
-          </div>
-        </div>
-
         {error && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl bg-danger-bg border border-danger/20 px-4 py-3 text-sm text-danger animate-fade-in">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="size-5 shrink-0"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
-              />
-            </svg>
+          <div className="mb-4 flex items-center gap-2 rounded-xl bg-danger-bg border border-danger/20 px-4 py-3 text-sm text-danger">
             <p className="font-medium">{error}</p>
           </div>
         )}
 
         <button
-          type="submit"
-          disabled={pending}
-          className="mt-6 w-full flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-4 py-3 text-sm font-bold text-primary-foreground shadow-lg hover:shadow-primary/30 transition-all cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+          onClick={signIn}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-border bg-background hover:bg-muted-bg px-4 py-3 text-sm font-bold text-foreground shadow-sm transition-all cursor-pointer disabled:opacity-50"
         >
-          {pending ? (
-            <>
-              <svg
-                className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              Signing in…
-            </>
+          {loading ? (
+            <svg className="animate-spin size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
           ) : (
-            "Sign In"
+            <svg viewBox="0 0 24 24" className="size-4" aria-hidden>
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1Z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.26 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z" />
+              <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84Z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.3 9.14 5.38 12 5.38Z" />
+            </svg>
           )}
+          Continue with Google
         </button>
-      </form>
+
+        <p className="mt-4 text-center text-[11px] text-muted">
+          Access is granted by a super admin. Signing in without a role shows
+          an access-denied screen.
+        </p>
+      </div>
     </main>
   );
 }

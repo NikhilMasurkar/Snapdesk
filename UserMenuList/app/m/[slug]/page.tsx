@@ -143,6 +143,7 @@ export default async function MenuPage({ params, searchParams }: PageProps) {
         <ReviewsSection
           businessId={business.id}
           slug={business.slug}
+          table={table}
           initialReviews={testimonials}
           totalCount={totalCount}
           avgRating={avgRating}

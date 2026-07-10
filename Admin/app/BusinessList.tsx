@@ -284,6 +284,14 @@ function PendingCard({
               <span className="size-1.5 rounded-full bg-warning animate-pulse" />
               Pending Review
             </span>
+            {b.dup_warning && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-danger-bg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-danger"
+                title={`Phone matches existing business: ${b.dup_warning}`}
+              >
+                ⚠️ Phone matches “{b.dup_warning}”
+              </span>
+            )}
             <span className="text-xs text-muted">
               Applied {new Date(b.created_at).toLocaleDateString()}
             </span>

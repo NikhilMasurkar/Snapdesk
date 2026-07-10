@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getAdmin } from "@/lib/admin";
-import { canManageTeam } from "@/lib/roles";
+import { canAssignRoles } from "@/lib/roles";
 import { createServiceClient } from "@/lib/service";
 import { logout } from "@/app/login/actions";
 import { money, dailySeries, timeWindows } from "@/lib/analytics";
@@ -13,7 +13,7 @@ const MENU_BASE_URL =
   process.env.NEXT_PUBLIC_MENU_BASE_URL ?? "https://snapdesk-tan.vercel.app";
 
 export default async function AdminPage() {
-  const { user, isAdmin, role } = await getAdmin();
+  const { user, isAdmin, roles } = await getAdmin();
 
   if (!isAdmin) {
     return (
@@ -81,6 +81,20 @@ export default async function AdminPage() {
     ...b,
     owner_email: b.owner_id ? emailById.get(b.owner_id) : undefined,
   }));
+
+  // §0.6 Duplicate-application flag: a pending application whose WhatsApp or
+  // owner phone matches ANOTHER business (same person applying twice / with
+  // many emails) gets a ⚠️ in the queue.
+  const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "").slice(-10);
+  for (const p of rows.filter((b) => b.status === "pending")) {
+    const pPhones = new Set([digits(p.whatsapp_number), digits(p.owner_phone)].filter(Boolean));
+    const match = rows.find(
+      (o) =>
+        o.id !== p.id &&
+        (pPhones.has(digits(o.whatsapp_number)) || pPhones.has(digits(o.owner_phone)))
+    );
+    if (match) p.dup_warning = match.name;
+  }
 
   const pending = rows.filter((b) => b.status === "pending");
   const approved = rows.filter((b) => b.status === "approved");
@@ -154,7 +168,7 @@ export default async function AdminPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {canManageTeam(role) && (
+            {canAssignRoles(roles) && (
               <Link
                 href="/team"
                 className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-bold text-foreground hover:bg-muted-bg hover:border-muted/50 shadow-sm transition-all"

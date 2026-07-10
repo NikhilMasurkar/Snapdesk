@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/service";
-import type { Role } from "@/lib/roles";
+import { isSuperAdmin, type Role, type Roles } from "@/lib/roles";
 
 /**
  * PHASE3_SPEC §4.1: a session must exist AND the user must have a row in
@@ -13,7 +13,7 @@ import type { Role } from "@/lib/roles";
  * that's the point). `role` drives the Admin-site RBAC (lib/roles.ts).
  */
 export const getAdmin = cache(
-  async (): Promise<{ user: User; isAdmin: boolean; role: Role | null }> => {
+  async (): Promise<{ user: User; isAdmin: boolean; roles: Roles }> => {
     const supabase = await createClient();
     const {
       data: { user },
@@ -23,15 +23,16 @@ export const getAdmin = cache(
     const service = createServiceClient();
     const { data } = await service
       .from("admin_users")
-      .select("role")
+      .select("*")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    return {
-      user,
-      isAdmin: !!data,
-      role: (data?.role as Role | undefined) ?? null,
-    };
+    // Compat shim: pre-migration rows have a single `role`, post-migration
+    // a `roles` array. Normalize to an array either way.
+    const row = data as { roles?: Role[]; role?: Role } | null;
+    const roles: Roles = row?.roles ?? (row?.role ? [row.role] : null);
+
+    return { user, isAdmin: !!row, roles };
   }
 );
 
@@ -42,9 +43,9 @@ export async function requireAdmin(): Promise<User> {
   return user;
 }
 
-/** Role/team management is super-admin only. */
+/** Removals / superadmin grants are super-admin only. */
 export async function requireSuperAdmin(): Promise<User> {
-  const { user, role } = await getAdmin();
-  if (role !== "superadmin") throw new Error("Not authorized");
+  const { user, roles } = await getAdmin();
+  if (!isSuperAdmin(roles)) throw new Error("Not authorized");
   return user;
 }

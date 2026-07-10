@@ -28,9 +28,11 @@ function useAlreadyReviewed(slug: string) {
 export default function ReviewForm({
   businessId,
   slug,
+  table,
 }: {
   businessId: string;
   slug: string;
+  table: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -73,7 +75,7 @@ export default function ReviewForm({
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const result = await submitReview(businessId, { name, rating, text });
+      const result = await submitReview(businessId, { name, rating, text, table });
       if (!result.ok) {
         setError(result.error);
         return;

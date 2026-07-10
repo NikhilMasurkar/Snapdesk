@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { clearTable } from "../actions";
 import { addStaffItem, editOrderItems, generateBill } from "./actions";
 
 type Props = {
@@ -78,6 +79,9 @@ export default function TableDetail({
   const [query, setQuery] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [billing, setBilling] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearReason, setClearReason] = useState("");
+  const [clearing, setClearing] = useState(false);
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const initialRef = useRef(initialOrders);
@@ -238,6 +242,19 @@ export default function TableDetail({
   };
 
   // ── Generate bill ─────────────────────────────────────────────────────────
+  const handleClearTable = async () => {
+    if (clearing) return;
+    setClearing(true);
+    const res = await clearTable(tableNo, clearReason);
+    setClearing(false);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    toast.success("Table cleared — no bill generated");
+    router.push("/dashboard/tables");
+  };
+
   const handleGenerateBill = async () => {
     if (billing) return;
     setBilling(true);
@@ -364,6 +381,58 @@ export default function TableDetail({
         )}
         Generate Bill · {formatMoney(currency, runningTotal)}
       </Button>
+
+      {/* §0.1 walk-outs: clear without billing (cancelled, never revenue) */}
+      {hasItems && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-destructive hover:text-destructive"
+          disabled={billing}
+          onClick={() => setClearOpen(true)}
+        >
+          Clear table (no bill)
+        </Button>
+      )}
+
+      {/* Clear-table reason dialog */}
+      <Dialog open={clearOpen} onOpenChange={setClearOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clear {tableLabel} without billing?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            All approved orders on this table are cancelled and never counted
+            as revenue. The records stay in your Orders history.
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {["Customer left", "Wrong table", "Order mistake", "Test order"].map((r) => (
+              <button
+                key={r}
+                onClick={() => setClearReason(r)}
+                className={`rounded-full border px-2.5 py-1 text-xs ${
+                  clearReason === r ? "bg-destructive text-white" : "hover:bg-muted"
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          <Input
+            placeholder="Or type a reason…"
+            value={clearReason}
+            onChange={(e) => setClearReason(e.target.value)}
+            maxLength={200}
+          />
+          <Button
+            variant="destructive"
+            disabled={!clearReason.trim() || clearing}
+            onClick={handleClearTable}
+          >
+            {clearing ? "Clearing…" : "Clear table"}
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       {/* Order history strip */}
       {orders.length > 0 && (

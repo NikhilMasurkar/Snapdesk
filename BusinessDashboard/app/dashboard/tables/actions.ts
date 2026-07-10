@@ -10,32 +10,73 @@ import { type ActionResult, ok, fail } from "@/lib/action-result";
  * own orders") + the protect_order_columns trigger enforce that only the
  * owner's own orders change and only along legal transitions.
  */
-async function setOrderStatus(
-  orderId: string,
-  status: "approved" | "rejected"
-): Promise<ActionResult> {
+export async function approveOrder(orderId: string): Promise<ActionResult> {
   const business = await getOwnerBusiness();
   if (!business) return fail("No business found.");
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("orders")
-    .update({ status })
+    .update({ status: "approved" })
     .eq("id", orderId)
     .eq("business_id", business.id)
-    .eq("status", "pending"); // only pending orders can be approved/rejected
+    .eq("status", "pending");
 
   if (error) return fail(error.message);
   revalidatePath("/dashboard/tables");
   return ok;
 }
 
-export async function approveOrder(orderId: string): Promise<ActionResult> {
-  return setOrderStatus(orderId, "approved");
+/** Rejections carry a reason (§0.2) — matters for disputes. */
+export async function rejectOrder(
+  orderId: string,
+  reason: string
+): Promise<ActionResult> {
+  const business = await getOwnerBusiness();
+  if (!business) return fail("No business found.");
+  const trimmed = reason.trim().slice(0, 200);
+  if (!trimmed) return fail("A reason is required to reject an order.");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("orders")
+    .update({ status: "rejected", status_reason: trimmed })
+    .eq("id", orderId)
+    .eq("business_id", business.id)
+    .eq("status", "pending");
+
+  if (error) return fail(error.message);
+  revalidatePath("/dashboard/tables");
+  return ok;
 }
 
-export async function rejectOrder(orderId: string): Promise<ActionResult> {
-  return setOrderStatus(orderId, "rejected");
+/**
+ * §0.1 "Clear table (no bill)": cancel every approved unbilled order on the
+ * table (customer walked out, wrong table, …). Keeps the records, never
+ * counts as revenue. Reason required.
+ */
+export async function clearTable(
+  tableNo: string | null,
+  reason: string
+): Promise<ActionResult> {
+  const business = await getOwnerBusiness();
+  if (!business) return fail("No business found.");
+  const trimmed = reason.trim().slice(0, 200);
+  if (!trimmed) return fail("A reason is required to clear a table.");
+
+  const supabase = await createClient();
+  let query = supabase
+    .from("orders")
+    .update({ status: "cancelled", status_reason: trimmed })
+    .eq("business_id", business.id)
+    .eq("status", "approved")
+    .is("bill_id", null);
+  query = tableNo === null ? query.is("table_no", null) : query.eq("table_no", tableNo);
+
+  const { error } = await query;
+  if (error) return fail(error.message);
+  revalidatePath("/dashboard/tables", "layout");
+  return ok;
 }
 
 /**

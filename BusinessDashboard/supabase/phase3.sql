@@ -22,15 +22,26 @@ create table if not exists admin_users (
 alter table admin_users enable row level security;
 -- No policies = unreachable via anon/authenticated keys.
 
--- Per-admin role for the Admin site's RBAC. Any row = can sign into /admin;
--- the role decides what they see (see Admin/lib/roles.ts). superadmin + admin
--- pass every capability check.
-alter table admin_users add column if not exists role text not null default 'admin'
-  check (role in (
+-- Per-admin ROLES (plural) for the Admin site's RBAC. Any row = can sign into
+-- /admin; a user can hold several roles (see Admin/lib/roles.ts). superadmin
+-- implies everything. Migrates the earlier single-role column if present.
+alter table admin_users add column if not exists roles text[] not null default array['admin']::text[];
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+             where table_name = 'admin_users' and column_name = 'role') then
+    update admin_users set roles = array[role];
+    alter table admin_users drop column role;
+  end if;
+end $$;
+alter table admin_users drop constraint if exists admin_users_roles_valid;
+alter table admin_users add constraint admin_users_roles_valid check (
+  roles <> '{}' and roles <@ array[
     'superadmin', 'admin', 'snap_manager',
     'snap_sales_manager', 'snap_sales_member', 'snap_employee',
     'analytics_revenue', 'analytics_users'
-  ));
+  ]::text[]
+);
 
 create or replace function is_admin()
 returns boolean language sql security definer stable as $$
@@ -541,6 +552,9 @@ create policy "admin read all pages" on pages for select using (is_admin());
 --      insert into admin_users (user_id)
 --      select id from auth.users where email = 'YOUR_EMAIL_HERE'
 --      on conflict do nothing;
+--    Then promote yourself to super admin (manages the Admin team/roles):
+--      update admin_users set role = 'superadmin'
+--      where user_id = (select id from auth.users where email = 'YOUR_EMAIL_HERE');
 --
 -- 2. Supabase Dashboard → Database → Replication → confirm the
 --    supabase_realtime publication includes the "orders" table (the DO block

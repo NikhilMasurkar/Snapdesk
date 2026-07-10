@@ -25,6 +25,9 @@ export type Business = {
   created_at: string;
   /** Joined in app/page.tsx from auth.users via the service client. */
   owner_email?: string;
+  /** §0.6 set in app/page.tsx when this application's phone matches another
+   *  business — value is the matching business's name. */
+  dup_warning?: string;
 };
 
 export type BusinessFeatures = {
@@ -55,7 +58,8 @@ export type Order = {
   items: OrderItemLine[];
   total: number;
   note: string | null;
-  status: "pending" | "approved" | "rejected" | "billed";
+  status: "pending" | "approved" | "rejected" | "billed" | "cancelled";
+  status_reason: string | null;
   source: "customer" | "staff";
   bill_id: string | null;
   created_at: string;

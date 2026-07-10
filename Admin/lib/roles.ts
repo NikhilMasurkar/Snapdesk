@@ -1,7 +1,6 @@
-// Admin-site RBAC. One role per admin user (stored on admin_users.role).
-// superadmin + admin are god-mode — they pass every capability check below.
-// Add a new `canX` helper here whenever a feature needs to be shown to a
-// specific set of roles, then gate the UI/action with it.
+// Admin-site RBAC. A user holds MULTIPLE roles (admin_users.roles text[]).
+// superadmin implies every role. Add a `canX` helper here whenever a feature
+// needs gating, then use it in the UI/action.
 
 export const ROLES = [
   "superadmin",
@@ -15,6 +14,7 @@ export const ROLES = [
 ] as const;
 
 export type Role = (typeof ROLES)[number];
+export type Roles = Role[] | null;
 
 export const ROLE_LABELS: Record<Role, string> = {
   superadmin: "Super Admin",
@@ -27,29 +27,34 @@ export const ROLE_LABELS: Record<Role, string> = {
   analytics_users: "Analytics — Users",
 };
 
+export const hasRole = (roles: Roles, r: Role): boolean => !!roles?.includes(r);
+
 // ── Base ─────────────────────────────────────────────────────────────────────
-export const isSuperAdmin = (r: Role | null): boolean => r === "superadmin";
-/** God-mode: superadmin or admin pass everything. */
-export const isAdmin = (r: Role | null): boolean =>
-  r === "superadmin" || r === "admin";
+export const isSuperAdmin = (roles: Roles): boolean => hasRole(roles, "superadmin");
+/** superadmin implies admin; both pass every capability check. */
+export const isAdmin = (roles: Roles): boolean =>
+  isSuperAdmin(roles) || hasRole(roles, "admin");
 
 // ── Sales (manager ⊇ member) ────────────────────────────────────────────────
-export const canSalesManager = (r: Role | null): boolean =>
-  isAdmin(r) || r === "snap_sales_manager";
-export const canSalesMember = (r: Role | null): boolean =>
-  canSalesManager(r) || r === "snap_sales_member";
+export const canSalesManager = (roles: Roles): boolean =>
+  isAdmin(roles) || hasRole(roles, "snap_sales_manager");
+export const canSalesMember = (roles: Roles): boolean =>
+  canSalesManager(roles) || hasRole(roles, "snap_sales_member");
 
 // ── Analytics ────────────────────────────────────────────────────────────────
-export const canAnalyticsRevenue = (r: Role | null): boolean =>
-  isAdmin(r) || r === "analytics_revenue";
-export const canAnalyticsUsers = (r: Role | null): boolean =>
-  isAdmin(r) || r === "analytics_users";
+export const canAnalyticsRevenue = (roles: Roles): boolean =>
+  isAdmin(roles) || hasRole(roles, "analytics_revenue");
+export const canAnalyticsUsers = (roles: Roles): boolean =>
+  isAdmin(roles) || hasRole(roles, "analytics_users");
 
 // ── Manager / employee ───────────────────────────────────────────────────────
-export const canManager = (r: Role | null): boolean =>
-  isAdmin(r) || r === "snap_manager";
-export const canEmployee = (r: Role | null): boolean =>
-  canManager(r) || canSalesMember(r) || r === "snap_employee";
+export const canManager = (roles: Roles): boolean =>
+  isAdmin(roles) || hasRole(roles, "snap_manager");
+export const canEmployee = (roles: Roles): boolean =>
+  canManager(roles) || canSalesMember(roles) || hasRole(roles, "snap_employee");
 
-// ── Team/role management: super admin only ──────────────────────────────────
-export const canManageTeam = isSuperAdmin;
+// ── Team management ──────────────────────────────────────────────────────────
+/** admin + superadmin can ASSIGN (add) roles. */
+export const canAssignRoles = isAdmin;
+/** Only superadmin can REMOVE roles or members, or grant superadmin. */
+export const canRemoveRoles = isSuperAdmin;

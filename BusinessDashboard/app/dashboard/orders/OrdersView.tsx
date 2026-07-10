@@ -27,6 +27,7 @@ const STATUS_STYLES: Record<Order["status"], string> = {
   approved: "bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-300",
   rejected: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400",
   billed: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
+  cancelled: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300",
 };
 
 export default function OrdersView({
@@ -57,7 +58,7 @@ export default function OrdersView({
 
   const exportOrders = () =>
     downloadCsv("orders.csv", [
-      ["Order ID", "Date", "Table", "Source", "Items", "Total", "Status"],
+      ["Order ID", "Date", "Table", "Source", "Items", "Total", "Status", "Reason"],
       ...filtered.map((o) => [
         o.short_id,
         new Date(o.created_at).toLocaleString(),
@@ -66,6 +67,7 @@ export default function OrdersView({
         itemsText(o),
         Number(o.total),
         o.status,
+        o.status_reason ?? "",
       ]),
     ]);
 
@@ -82,7 +84,7 @@ export default function OrdersView({
       ]),
     ]);
 
-  const filters: StatusFilter[] = ["all", "pending", "approved", "rejected", "billed"];
+  const filters: StatusFilter[] = ["all", "pending", "approved", "rejected", "billed", "cancelled"];
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-5">
@@ -175,9 +177,17 @@ export default function OrdersView({
                     {formatMoney(currency, Number(o.total))}
                   </td>
                   <td className="px-3 py-2">
-                    <span className={`rounded px-1.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[o.status]}`}>
+                    <span
+                      className={`rounded px-1.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[o.status]}`}
+                      title={o.status_reason ?? undefined}
+                    >
                       {o.status}
                     </span>
+                    {o.status_reason && (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        — {o.status_reason}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))

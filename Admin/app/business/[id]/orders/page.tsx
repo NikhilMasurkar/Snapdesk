@@ -75,7 +75,9 @@ function StatusChip({ status }: { status: string }) {
         ? "bg-info-bg text-info border-info/20"
         : status === "pending"
           ? "bg-warning-bg text-warning border-warning/20"
-          : "bg-muted-bg text-muted border-border/80";
+          : status === "cancelled"
+            ? "bg-danger-bg text-danger border-danger/20"
+            : "bg-muted-bg text-muted border-border/80";
   return (
     <span className={`inline-flex items-center rounded border px-2 py-0.5 font-bold uppercase tracking-wide text-[9px] ${cls}`}>
       {status}

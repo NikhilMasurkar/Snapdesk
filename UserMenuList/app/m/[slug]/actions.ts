@@ -119,6 +119,8 @@ export type ReviewInput = {
   name: string;
   rating: number;
   text: string;
+  /** §0.7 which table the reviewer scanned from (QR ?table param). */
+  table?: string | null;
 };
 
 export type ReviewResult = { ok: true } | { ok: false; error: string };
@@ -149,6 +151,7 @@ export async function submitReview(
     rating,
     text,
     status: "pending",
+    table_hint: input.table?.trim() ? input.table.trim().slice(0, 20) : null,
   });
 
   if (error) {

@@ -60,6 +60,8 @@ export default function TablesGrid({
   const [accepting, setAccepting] = useState(acceptingOrders);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  // Order currently being rejected — shows the reason chips (§0.2).
+  const [rejecting, setRejecting] = useState<string | null>(null);
 
   // Keep local state in sync if the server component re-renders (revalidate).
   const initialRef = useRef(initialOrders);
@@ -210,32 +212,33 @@ export default function TablesGrid({
   const selectedOrders = selectedKey ? byTile.get(selectedKey) ?? [] : [];
 
   // ── Actions ───────────────────────────────────────────────────────────────
-  const handleDecision = async (
-    order: Order,
-    decision: "approve" | "reject"
-  ) => {
+  const handleApprove = async (order: Order) => {
     setBusyOrderId(order.id);
-    // Optimistic: reflect the decision immediately.
     setOrders((prev) =>
-      decision === "approve"
-        ? prev.map((o) => (o.id === order.id ? { ...o, status: "approved" } : o))
-        : prev.filter((o) => o.id !== order.id)
+      prev.map((o) => (o.id === order.id ? { ...o, status: "approved" } : o))
     );
-    const res =
-      decision === "approve"
-        ? await approveOrder(order.id)
-        : await rejectOrder(order.id);
+    const res = await approveOrder(order.id);
     setBusyOrderId(null);
     if (!res.ok) {
       toast.error(res.error);
       router.refresh(); // reconcile from the server on failure
       return;
     }
-    toast.success(
-      decision === "approve"
-        ? `Order #${order.short_id} approved`
-        : `Order #${order.short_id} rejected`
-    );
+    toast.success(`Order #${order.short_id} approved`);
+  };
+
+  const handleReject = async (order: Order, reason: string) => {
+    setRejecting(null);
+    setBusyOrderId(order.id);
+    setOrders((prev) => prev.filter((o) => o.id !== order.id));
+    const res = await rejectOrder(order.id, reason);
+    setBusyOrderId(null);
+    if (!res.ok) {
+      toast.error(res.error);
+      router.refresh();
+      return;
+    }
+    toast.success(`Order #${order.short_id} rejected`);
   };
 
   const handleAcceptingToggle = async (next: boolean) => {
@@ -419,7 +422,9 @@ export default function TablesGrid({
                           size="sm"
                           variant="outline"
                           disabled={busyOrderId === order.id}
-                          onClick={() => handleDecision(order, "reject")}
+                          onClick={() =>
+                            setRejecting((r) => (r === order.id ? null : order.id))
+                          }
                           className="text-destructive hover:text-destructive"
                         >
                           Reject
@@ -427,7 +432,7 @@ export default function TablesGrid({
                         <Button
                           size="sm"
                           disabled={busyOrderId === order.id}
-                          onClick={() => handleDecision(order, "approve")}
+                          onClick={() => handleApprove(order)}
                         >
                           {busyOrderId === order.id ? (
                             <Loader2 className="size-4 animate-spin" />
@@ -438,6 +443,30 @@ export default function TablesGrid({
                       </div>
                     )}
                   </div>
+
+                  {/* Rejection reason chips (§0.2) */}
+                  {rejecting === order.id && (
+                    <div className="mt-2 flex flex-wrap gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 p-2">
+                      <span className="w-full text-xs font-medium text-muted-foreground">
+                        Why reject?
+                      </span>
+                      {[
+                        "Item unavailable",
+                        "Customer left",
+                        "Wrong table",
+                        "Suspected prank",
+                        "Kitchen closed",
+                      ].map((reason) => (
+                        <button
+                          key={reason}
+                          onClick={() => handleReject(order, reason)}
+                          className="rounded-full border px-2.5 py-1 text-xs hover:bg-destructive hover:text-white"
+                        >
+                          {reason}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
           </div>
