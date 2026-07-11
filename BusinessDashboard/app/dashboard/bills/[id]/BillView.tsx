@@ -69,7 +69,7 @@ export default function BillView({
   };
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-4">
+    <div className="flex w-full flex-col gap-4">
       {/* Print rules: hide the app chrome, size for an 80mm thermal roll. */}
       <style>{`
         @media print {

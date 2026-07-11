@@ -396,7 +396,7 @@ export default function TableDetail({
   const hasItems = merged.length > 0;
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6 pb-16">
+    <div className="flex w-full flex-col gap-6 pb-16">
       {/* Header Card */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
         <div className="flex items-center gap-4">

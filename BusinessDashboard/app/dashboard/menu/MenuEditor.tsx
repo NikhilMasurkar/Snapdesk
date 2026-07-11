@@ -177,7 +177,7 @@ export default function MenuEditor({ businessId, currency, categories, items }: 
   );
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Menu</h1>

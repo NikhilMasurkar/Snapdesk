@@ -259,7 +259,7 @@ export default function TablesGrid({
   };
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -296,7 +296,7 @@ export default function TablesGrid({
       )}
 
       {/* Grid */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
         {tileKeys.map((key) => {
           const tileOrders = byTile.get(key) ?? [];
           const pending = tileOrders.filter((o) => o.status === "pending");

@@ -88,7 +88,7 @@ export default function KitchenBoard({
   const incoming = orders.filter((o) => o.status === "pending");
 
   return (
-    <div ref={boardRef} className="flex min-h-full flex-col gap-4 bg-background p-1">
+    <div ref={boardRef} className="flex min-h-full w-full flex-col gap-4 bg-background p-1">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ChefHat className="size-6" />
