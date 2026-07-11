@@ -4,8 +4,8 @@ const Properties = {
   MODE: "test",
 
   // This app (Admin)
-  BASE_URL: "http://localhost:3002",
-  // BASE_URL: "https://admin-zeta-beryl.vercel.app",
+  // BASE_URL: "http://localhost:3002",
+  BASE_URL: "https://admin-zeta-beryl.vercel.app",
 
   // MENU_BASE_URL: "http://localhost:3000",
   MENU_BASE_URL: "https://snapdesk-tan.vercel.app",
