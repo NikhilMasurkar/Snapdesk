@@ -219,18 +219,18 @@ export default function TablesGrid({
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const handleApprove = async (order: Order) => {
-    setBusyOrderId(order.id);
+    setSelectedKey(null);
     setOrders((prev) =>
       prev.map((o) => (o.id === order.id ? { ...o, status: "approved" } : o))
     );
+    toast.success(`Order #${order.short_id} approved`);
+    router.push(`/dashboard/tables/${encodeURIComponent(order.table_no ?? "counter")}`);
+
     const res = await approveOrder(order.id);
-    setBusyOrderId(null);
     if (!res.ok) {
       toast.error(res.error);
       router.refresh(); // reconcile from the server on failure
-      return;
     }
-    toast.success(`Order #${order.short_id} approved`);
   };
 
   const handleReject = async (order: Order, reason: string) => {
@@ -308,7 +308,13 @@ export default function TablesGrid({
           return (
             <button
               key={key}
-              onClick={() => setSelectedKey(key)}
+              onClick={() => {
+                if (hasPending) {
+                  setSelectedKey(key);
+                } else {
+                  router.push(`/dashboard/tables/${encodeURIComponent(key)}`);
+                }
+              }}
               className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 p-3 text-center transition-all ${
                 hasPending
                   ? "animate-pulse border-amber-400 bg-amber-50 dark:bg-amber-950/30"
@@ -338,7 +344,10 @@ export default function TablesGrid({
 
       {/* Per-table dialog */}
       <Dialog
-        open={selectedKey !== null}
+        open={
+          selectedKey !== null &&
+          selectedOrders.some((o) => o.status === "pending")
+        }
         onOpenChange={(o) => !o && setSelectedKey(null)}
       >
         <DialogContent className="max-h-[85vh] overflow-y-auto">

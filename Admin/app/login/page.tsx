@@ -4,6 +4,8 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Properties from "@/lib/properties";
 import ThemeToggle from "../_components/ThemeToggle";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -31,20 +33,10 @@ export default function LoginPage() {
 
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-primary/10 blur-3xl -z-10 pointer-events-none" />
 
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-xl transition-all duration-200 hover:shadow-2xl hover:border-muted/50">
+      <Card className="w-full max-w-md rounded-2xl p-8 shadow-xl transition-all duration-200 hover:shadow-2xl hover:border-muted/50">
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="flex items-center justify-center size-12 rounded-xl bg-primary/10 text-primary mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-6">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25"
-              />
-            </svg>
-          </div>
-
-          <h1 className="text-2xl font-bold tracking-tight text-card-foreground">
-            Snapdesk <span className="bg-gradient-to-r from-primary to-violet-500 bg-clip-text text-transparent">Admin</span>
+          <h1 className="text-3xl font-black tracking-tight text-card-foreground">
+            Snapdesk <span className="text-primary">Admin</span>
           </h1>
           <p className="mt-2 text-sm text-muted">
             Restricted area — Authorized administrator accounts only
@@ -57,10 +49,11 @@ export default function LoginPage() {
           </div>
         )}
 
-        <button
+        <Button
+          variant="outline"
           onClick={signIn}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-border bg-background hover:bg-muted-bg px-4 py-3 text-sm font-bold text-foreground shadow-sm transition-all cursor-pointer disabled:opacity-50"
+          className="w-full gap-2.5 rounded-xl py-6 text-sm font-bold shadow-sm"
         >
           {loading ? (
             <svg className="animate-spin size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -76,13 +69,13 @@ export default function LoginPage() {
             </svg>
           )}
           Continue with Google
-        </button>
+        </Button>
 
         <p className="mt-4 text-center text-[11px] text-muted">
           Access is granted by a super admin. Signing in without a role shows
           an access-denied screen.
         </p>
-      </div>
+      </Card>
     </main>
   );
 }

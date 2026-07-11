@@ -41,4 +41,4 @@ UserMenuList + BusinessDashboard.
 - `app/page.tsx` — inquiry queue + business lists by status, stats
 - `app/actions.ts` — `adminAction()` wrapper; approve(plan, tables) / reject /
   suspend / reactivate / delete-rejected
-- Plain Tailwind, no component library — this app stays intentionally tiny.
+- UI: shadcn/ui (components/ui/*, Tailwind v4). Use shadcn components for new screens; older pages migrate as touched. Note: `bg-muted` in generated shadcn components is rewritten to `bg-muted-bg` because this app uses `--muted` as a text color.

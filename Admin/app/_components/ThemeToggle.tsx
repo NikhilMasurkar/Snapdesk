@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -25,9 +26,11 @@ export default function ThemeToggle() {
   };
 
   return (
-    <button
+    <Button
+      variant="outline"
+      size="icon"
       onClick={toggleTheme}
-      className="flex items-center justify-center p-2 rounded-lg border border-border bg-card text-muted hover:text-foreground hover:bg-muted-bg transition-colors cursor-pointer focus:outline-none"
+      className="text-muted hover:text-foreground"
       aria-label="Toggle Theme"
       title={`Switch to ${theme === "light" ? "Dark" : "Light"} Mode`}
     >
@@ -64,6 +67,6 @@ export default function ThemeToggle() {
           />
         </svg>
       )}
-    </button>
+    </Button>
   );
 }

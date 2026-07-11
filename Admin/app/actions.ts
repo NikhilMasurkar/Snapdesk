@@ -205,6 +205,32 @@ export async function linkOwnerByEmail(
   );
 }
 
+/** Update table QR allocation count for a business. */
+export async function updateTableCount(
+  id: string,
+  count: number
+): Promise<ActionResult> {
+  const cap = Math.floor(Number(count));
+  if (Number.isNaN(cap) || cap < 0 || cap > 1000) {
+    return { ok: false, error: "Table count must be between 0 and 1000." };
+  }
+  return adminAction(
+    "update_table_count",
+    id,
+    { table_count: cap },
+    async (service) => {
+      const { error } = await service
+        .from("businesses")
+        .update({
+          table_count: cap,
+        })
+        .eq("id", id);
+      return error?.message ?? null;
+    },
+    { revalidate: [`/business/${id}`, "/"] }
+  );
+}
+
 export type FeaturesInput = {
   ordering_enabled: boolean;
   testimonials_enabled: boolean;

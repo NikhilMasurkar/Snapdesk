@@ -1,15 +1,22 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
+@custom-variant dark (&:is(.dark *));
+
+/* Team palette first; shadcn-only vars mapped onto it below. */
 :root {
+  /* runtime var for body font-family (theme-inline vars aren't emitted) */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --background: #f8fafc; /* slate 50 */
   --foreground: #0f172a; /* slate 900 */
   --card: #ffffff;
   --card-foreground: #0f172a;
   --border: #e2e8f0; /* slate 200 */
-  --muted: #64748b; /* slate 500 */
+  --muted: #64748b; /* slate 500 — used as TEXT color app-wide */
   --muted-bg: #f1f5f9; /* slate 100 */
-  --primary: #4f46e5; /* indigo 600 */
-  --primary-hover: #4338ca; /* indigo 700 */
+  --primary: #ea580c; /* orange 600 */
+  --primary-hover: #c2410c; /* orange 700 */
   --primary-foreground: #ffffff;
   --success: #10b981; /* emerald 500 */
   --success-bg: #ecfdf5; /* emerald 50 */
@@ -19,6 +26,19 @@
   --danger-bg: #fff1f2; /* rose 50 */
   --info: #0284c7; /* sky 600 */
   --info-bg: #f0f9ff; /* sky 50 */
+
+  /* shadcn component vars, aliased to the palette above */
+  --popover: var(--card);
+  --popover-foreground: var(--card-foreground);
+  --secondary: var(--muted-bg);
+  --secondary-foreground: var(--foreground);
+  --muted-foreground: var(--muted);
+  --accent: var(--muted-bg);
+  --accent-foreground: var(--foreground);
+  --destructive: var(--danger);
+  --input: var(--border);
+  --ring: var(--primary);
+  --radius: 0.75rem;
 }
 
 .dark {
@@ -29,8 +49,8 @@
   --border: #27272a; /* zinc 800 */
   --muted: #a1a1aa; /* zinc 400 */
   --muted-bg: #27272a; /* zinc 800 */
-  --primary: #6366f1; /* indigo 500 */
-  --primary-hover: #4f46e5; /* indigo 600 */
+  --primary: #f97316; /* orange 500 */
+  --primary-hover: #ea580c; /* orange 600 */
   --primary-foreground: #ffffff;
   --success: #10b981; /* emerald 500 */
   --success-bg: #064e3b; /* emerald 950 */
@@ -40,6 +60,17 @@
   --danger-bg: #4c0519; /* rose 950 */
   --info: #38bdf8; /* sky 400 */
   --info-bg: #082f49; /* sky 950 */
+
+  --popover: var(--card);
+  --popover-foreground: var(--card-foreground);
+  --secondary: var(--muted-bg);
+  --secondary-foreground: var(--foreground);
+  --muted-foreground: var(--muted);
+  --accent: var(--muted-bg);
+  --accent-foreground: var(--foreground);
+  --destructive: var(--danger);
+  --input: var(--border);
+  --ring: var(--primary);
 }
 
 @theme inline {
@@ -61,7 +92,23 @@
   --color-danger-bg: var(--danger-bg);
   --color-info: var(--info);
   --color-info-bg: var(--info-bg);
-  
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
@@ -87,4 +134,10 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
 }

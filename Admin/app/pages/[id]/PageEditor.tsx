@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import type { Page } from "@/lib/types";
 import { createPage, deletePage, updatePage, type PageInput } from "../../actions";
 import DialogModal from "../../_components/DialogModal";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function PageEditor({ page }: { page: Page | null }) {
   const router = useRouter();
@@ -217,11 +221,11 @@ export default function PageEditor({ page }: { page: Page | null }) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Page Title</span>
-            <input
+            <Input
               value={form.title}
               onChange={(e) => set("title")(e.target.value)}
               placeholder="e.g. Privacy Policy"
-              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              className="w-full rounded-xl text-xs font-semibold"
             />
           </label>
           <label className="flex flex-col gap-1.5">
@@ -230,11 +234,11 @@ export default function PageEditor({ page }: { page: Page | null }) {
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted pointer-events-none font-mono text-xs">
                 /p/
               </span>
-              <input
+              <Input
                 value={form.slug}
                 onChange={(e) => set("slug")(e.target.value.toLowerCase())}
                 placeholder="e.g. privacy"
-                className="w-full rounded-xl border border-border bg-background pl-8 pr-4 py-2.5 font-mono text-xs text-foreground outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                className="w-full rounded-xl pl-8 pr-4 font-mono text-xs"
               />
             </div>
           </label>
@@ -246,9 +250,9 @@ export default function PageEditor({ page }: { page: Page | null }) {
         {/* Editor controls / tab selectors */}
         <div className="flex items-center justify-between border-b border-border bg-muted-bg/30 px-4 py-2">
           <div className="flex gap-2">
-            <button
+            <Button variant="ghost"
               onClick={() => setEditorTab("write")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              className={`h-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                 editorTab === "write"
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted hover:text-foreground"
@@ -258,10 +262,10 @@ export default function PageEditor({ page }: { page: Page | null }) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 20.013a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
               </svg>
               Write Content
-            </button>
-            <button
+            </Button>
+            <Button variant="ghost"
               onClick={() => setEditorTab("preview")}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+              className={`h-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                 editorTab === "preview"
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted hover:text-foreground"
@@ -272,7 +276,7 @@ export default function PageEditor({ page }: { page: Page | null }) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
               </svg>
               Live Preview
-            </button>
+            </Button>
           </div>
           <span className="text-[10px] text-muted font-bold tracking-wide uppercase">Markdown Enabled</span>
         </div>
@@ -280,15 +284,15 @@ export default function PageEditor({ page }: { page: Page | null }) {
         {/* Text area and rendered markdown preview */}
         <div className="p-5">
           {editorTab === "write" ? (
-            <textarea
+            <Textarea
               value={form.content}
               onChange={(e) => set("content")(e.target.value)}
               rows={18}
               placeholder={"# Title\n\nWrite your content using markdown syntax...\n\n## Subheading\n\n- Bullet items\n- **Bold text** or [Link anchor](https://google.com)"}
-              className="w-full rounded-xl border border-border bg-background p-4 font-mono text-xs text-foreground placeholder:text-muted/50 outline-none focus:border-primary transition-all resize-y"
+              className="w-full rounded-xl bg-background p-4 font-mono text-xs resize-y"
             />
           ) : (
-            <div className="rounded-xl border border-border bg-background p-6 overflow-y-auto max-h-[400px]">
+            <div className="h-auto rounded-xl border border-border bg-background p-6 overflow-y-auto max-h-[400px]">
               {renderMarkdownPreview(form.content)}
             </div>
           )}
@@ -298,11 +302,10 @@ export default function PageEditor({ page }: { page: Page | null }) {
       {/* Publication and actions */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-border bg-card p-5 shadow-sm">
         <label className="flex items-center gap-3 cursor-pointer group">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={form.is_published}
-            onChange={(e) => set("is_published")(e.target.checked)}
-            className="size-4 rounded border-border text-success focus:ring-success accent-success cursor-pointer"
+            onCheckedChange={(v) => set("is_published")(v === true)}
+            className="size-4 cursor-pointer"
           />
           <div className="flex flex-col min-w-0">
             <span className="text-xs font-bold text-foreground group-hover:text-success transition-colors">Publish immediately</span>
@@ -312,21 +315,21 @@ export default function PageEditor({ page }: { page: Page | null }) {
 
         <div className="flex items-center gap-2 self-end sm:self-center">
           {page && (
-            <button
+            <Button variant="ghost"
               disabled={pending}
               onClick={() => setIsDeleteModalOpen(true)}
-              className="rounded-xl border border-danger/30 hover:border-danger bg-card hover:bg-danger-bg px-4 py-2.5 text-xs font-bold text-danger transition-all cursor-pointer disabled:opacity-50"
+              className="h-auto rounded-xl border border-danger/30 hover:border-danger bg-card hover:bg-danger-bg px-4 py-2.5 text-xs font-bold text-danger transition-all cursor-pointer disabled:opacity-50"
             >
               Delete Page
-            </button>
+            </Button>
           )}
-          <button
+          <Button variant="ghost"
             disabled={pending}
             onClick={save}
-            className="rounded-xl bg-primary hover:bg-primary-hover px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:shadow-primary/20 transition-all cursor-pointer disabled:opacity-50"
+            className="h-auto rounded-xl bg-primary hover:bg-primary-hover px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:shadow-primary/20 transition-all cursor-pointer disabled:opacity-50"
           >
             {pending ? "Saving..." : page ? "Save Changes" : "Create Page"}
-          </button>
+          </Button>
         </div>
       </div>
 

@@ -85,10 +85,10 @@ export default function BillView({
       `}</style>
 
       {/* Screen-only controls */}
-      <div className="no-print flex items-center justify-between gap-2">
-        <Button variant="ghost" size="sm" asChild>
+      <div className="no-print flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+        <Button variant="outline" size="sm" className="rounded-xl font-medium shadow-2xs" asChild>
           <Link href="/dashboard/tables">
-            <ArrowLeft className="mr-1 size-4" /> Tables
+            <ArrowLeft className="mr-1.5 size-4" /> Back to Tables
           </Link>
         </Button>
         <div className="flex gap-2">
@@ -96,22 +96,26 @@ export default function BillView({
             <Button
               variant="outline"
               size="sm"
-              className="text-destructive hover:text-destructive"
+              className="rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive font-medium"
               onClick={() => setVoidOpen(true)}
             >
               <Ban className="mr-1 size-4" /> Void
             </Button>
           )}
-          <Button size="sm" onClick={() => window.print()}>
-            <Printer className="mr-1 size-4" /> Print
+          <Button size="sm" className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs" onClick={() => window.print()}>
+            <Printer className="mr-1.5 size-4" /> Print Bill
           </Button>
         </div>
       </div>
 
-      {/* Receipt */}
+      {/* Receipt Preview */}
+      <div className="no-print mx-auto flex w-full max-w-[340px] flex-col items-center">
+        <span className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Receipt Preview</span>
+      </div>
+
       <div
         id="bill-receipt"
-        className="relative mx-auto w-full max-w-[320px] rounded-lg border bg-white p-5 text-sm text-black shadow-sm"
+        className="relative mx-auto w-full max-w-[340px] rounded-xl border border-zinc-200 bg-white p-6 text-sm text-zinc-900 shadow-lg"
       >
         {bill.is_void && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

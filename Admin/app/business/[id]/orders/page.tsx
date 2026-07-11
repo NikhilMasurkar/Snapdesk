@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/service";
 import { money } from "@/lib/analytics";
 import type { Order } from "@/lib/types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 // ponytail: shows the most recent 50; add pagination when a business needs it.
 export default async function OrdersTab({ params }: { params: Promise<{ id: string }> }) {
@@ -26,41 +27,41 @@ export default async function OrdersTab({ params }: { params: Promise<{ id: stri
         <p className="py-8 text-center text-xs text-muted">No orders processed yet.</p>
       ) : (
         <div className="overflow-x-auto -mx-5 px-5">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wider text-muted">
-                <th className="pb-3 pr-4">Order ID</th>
-                <th className="pb-3 px-4">Table</th>
-                <th className="pb-3 px-4">Menu Items</th>
-                <th className="pb-3 px-4 text-right">Total Amount</th>
-                <th className="pb-3 px-4">Status</th>
-                <th className="pb-3 pl-4">Timestamp</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
+          <Table className="w-full text-left text-xs border-collapse">
+            <TableHeader>
+              <TableRow className="border-b border-border text-[10px] font-bold uppercase tracking-wider text-muted">
+                <TableHead className="pb-3 pr-4">Order ID</TableHead>
+                <TableHead className="pb-3 px-4">Table</TableHead>
+                <TableHead className="pb-3 px-4">Menu Items</TableHead>
+                <TableHead className="pb-3 px-4 text-right">Total Amount</TableHead>
+                <TableHead className="pb-3 px-4">Status</TableHead>
+                <TableHead className="pb-3 pl-4">Timestamp</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-border/60">
               {orders.map((o) => (
-                <tr key={o.id} className="hover:bg-muted-bg/30 transition-colors">
-                  <td className="py-3 pr-4 font-mono font-bold text-foreground">#{o.short_id}</td>
-                  <td className="py-3 px-4 font-semibold text-foreground">{o.table_no ?? "Counter"}</td>
-                  <td
+                <TableRow key={o.id} className="hover:bg-muted-bg/30 transition-colors">
+                  <TableCell className="py-3 pr-4 font-mono font-bold text-foreground">#{o.short_id}</TableCell>
+                  <TableCell className="py-3 px-4 font-semibold text-foreground">{o.table_no ?? "Counter"}</TableCell>
+                  <TableCell
                     className="py-3 px-4 text-muted max-w-sm truncate"
                     title={o.items.map((i) => `${i.qty}x ${i.name}`).join(", ")}
                   >
                     {o.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}
-                  </td>
-                  <td className="py-3 px-4 text-right font-bold tabular-nums text-foreground">
+                  </TableCell>
+                  <TableCell className="py-3 px-4 text-right font-bold tabular-nums text-foreground">
                     {money(Number(o.total))}
-                  </td>
-                  <td className="py-3 px-4">
+                  </TableCell>
+                  <TableCell className="py-3 px-4">
                     <StatusChip status={o.status} />
-                  </td>
-                  <td className="py-3 pl-4 text-muted">
-                    {new Date(o.created_at).toLocaleDateString()}
-                  </td>
-                </tr>
+                  </TableCell>
+                  <TableCell className="py-3 pl-4 text-muted" suppressHydrationWarning>
+                    {o.created_at ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(o.created_at)) : "N/A"}
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </section>

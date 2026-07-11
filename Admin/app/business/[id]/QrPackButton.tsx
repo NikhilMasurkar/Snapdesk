@@ -3,6 +3,7 @@
 import { useState } from "react";
 import QRCode from "qrcode";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   slug: string;
@@ -128,7 +129,7 @@ export default function QrPackButton({
   };
 
   return (
-    <button
+    <Button variant="ghost"
       onClick={generate}
       disabled={busy || tableCount < 1}
       className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-4 py-3 text-xs font-bold text-primary-foreground shadow-md hover:shadow-primary/20 transition-all cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
@@ -149,6 +150,6 @@ export default function QrPackButton({
           Generate QR PDF ({tableCount + 1} cards)
         </>
       )}
-    </button>
+    </Button>
   );
 }

@@ -3,6 +3,9 @@
 import { useState, useTransition } from "react";
 import { ROLES, ROLE_LABELS, type Role } from "@/lib/roles";
 import { removeAdmin, setAdminRoles } from "./actions";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 
 type Member = { userId: string; roles: Role[]; email: string };
 
@@ -27,12 +30,11 @@ function RoleBoxes({
             disabledFor(r) ? "text-muted opacity-60" : "text-foreground"
           }`}
         >
-          <input
-            type="checkbox"
+          <Checkbox
             checked={value.includes(r)}
-            onChange={() => onChange(r)}
+            onCheckedChange={() => onChange(r)}
             disabled={disabledFor(r)}
-            className="size-3.5 accent-[var(--primary,#6366f1)]"
+            className="size-3.5"
           />
           {ROLE_LABELS[r]}
         </label>
@@ -101,11 +103,11 @@ export default function TeamManager({
         <div className="flex flex-col gap-3">
           <label className="text-xs font-semibold text-muted">
             Email
-            <input
+            <Input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="person@example.com"
-              className="mt-1 block w-64 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+              className="mt-1 block w-64 rounded-lg text-sm"
             />
           </label>
           <div>
@@ -117,13 +119,14 @@ export default function TeamManager({
             />
           </div>
           <div>
-            <button
+            <Button
+              size="sm"
               disabled={pending || !email.trim() || newRoles.length === 0}
               onClick={() => run(() => setAdminRoles(email, newRoles), "Roles assigned")}
-              className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary-hover disabled:opacity-50"
+              className="text-xs font-bold"
             >
               Assign roles
-            </button>
+            </Button>
           </div>
         </div>
         <p className="mt-2 text-[11px] text-muted">
@@ -152,27 +155,30 @@ export default function TeamManager({
                   </p>
                   <div className="flex shrink-0 items-center gap-2">
                     {dirty && (
-                      <button
+                      <Button
+                        size="sm"
                         disabled={pending}
                         onClick={() =>
                           run(() => setAdminRoles(m.email, draft), "Roles updated")
                         }
-                        className="rounded-lg bg-primary px-3 py-1 text-xs font-bold text-primary-foreground hover:bg-primary-hover disabled:opacity-50"
+                        className="h-7 text-xs font-bold"
                       >
                         Save
-                      </button>
+                      </Button>
                     )}
                     {callerIsSuper && (
-                      <button
+                      <Button
+                        variant="outline"
+                        size="sm"
                         disabled={pending || isSelf}
                         onClick={() => {
                           if (window.confirm(`Remove ${m.email} from the admin team?`))
                             run(() => removeAdmin(m.userId), "Member removed");
                         }}
-                        className="rounded-lg border border-danger/40 px-3 py-1 text-xs font-bold text-danger hover:bg-danger-bg disabled:opacity-50"
+                        className="h-7 border-danger/40 text-xs font-bold text-danger hover:bg-danger-bg hover:text-danger"
                       >
                         Remove
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>

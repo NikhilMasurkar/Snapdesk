@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAdmin } from "@/lib/admin";
 import { createServiceClient } from "@/lib/service";
 import type { AuditRow } from "@/lib/types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const ACTION_LABEL: Record<string, string> = {
   approve_business: "Approved",
@@ -107,36 +108,36 @@ export default async function AuditPage() {
         ) : (
           <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border bg-muted-bg/30 text-[10px] font-bold uppercase tracking-wider text-muted">
-                    <th className="px-4 py-3">Timestamp</th>
-                    <th className="px-4 py-3">Administrator</th>
-                    <th className="px-4 py-3">Operation</th>
-                    <th className="px-4 py-3">Target Entity</th>
-                    <th className="px-4 py-3">Parameters / Detail</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
+              <Table className="w-full text-left text-xs border-collapse">
+                <TableHeader>
+                  <TableRow className="border-b border-border bg-muted-bg/30 text-[10px] font-bold uppercase tracking-wider text-muted">
+                    <TableHead className="px-4 py-3">Timestamp</TableHead>
+                    <TableHead className="px-4 py-3">Administrator</TableHead>
+                    <TableHead className="px-4 py-3">Operation</TableHead>
+                    <TableHead className="px-4 py-3">Target Entity</TableHead>
+                    <TableHead className="px-4 py-3">Parameters / Detail</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-border/60">
                   {audit.map((r) => {
                     const targetName =
                       r.target_type === "business"
                         ? bizName.get(r.target_id)
                         : undefined;
                     return (
-                      <tr key={r.id} className="hover:bg-muted-bg/30 transition-colors align-top">
-                        <td className="whitespace-nowrap px-4 py-3.5 text-muted font-medium">
-                          {new Date(r.created_at).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3.5 font-semibold text-foreground">
+                      <TableRow key={r.id} className="hover:bg-muted-bg/30 transition-colors align-top">
+                        <TableCell className="whitespace-nowrap px-4 py-3.5 text-muted font-medium" suppressHydrationWarning>
+                          {r.created_at ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "UTC" }).format(new Date(r.created_at)) : "N/A"}
+                        </TableCell>
+                        <TableCell className="px-4 py-3.5 font-semibold text-foreground">
                           {emailById.get(r.admin_user_id) ?? "System Admin"}
-                        </td>
-                        <td className="px-4 py-3.5">
+                        </TableCell>
+                        <TableCell className="px-4 py-3.5">
                           <span className={`inline-flex items-center rounded border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${getActionBadgeClass(r.action)}`}>
                             {ACTION_LABEL[r.action] ?? r.action}
                           </span>
-                        </td>
-                        <td className="px-4 py-3.5">
+                        </TableCell>
+                        <TableCell className="px-4 py-3.5">
                           {r.target_type === "business" && targetName ? (
                             <Link
                               href={`/business/${r.target_id}`}
@@ -149,8 +150,8 @@ export default async function AuditPage() {
                               {r.target_type}:{r.target_id.slice(0, 8)}
                             </span>
                           )}
-                        </td>
-                        <td className="px-4 py-3.5">
+                        </TableCell>
+                        <TableCell className="px-4 py-3.5">
                           {r.detail ? (
                             <div className="max-w-md overflow-x-auto rounded bg-muted-bg/50 border border-border/60 p-2 font-mono text-[10px] text-foreground leading-snug">
                               <pre className="whitespace-pre-wrap break-all">
@@ -160,12 +161,12 @@ export default async function AuditPage() {
                           ) : (
                             <span className="text-muted italic">—</span>
                           )}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </div>
         )}

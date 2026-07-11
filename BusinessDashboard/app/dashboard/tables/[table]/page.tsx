@@ -24,7 +24,7 @@ export default async function TableDetailPage({
 
   const supabase = await createClient();
 
-  const ordersQuery = supabase
+  const activeOrdersQuery = supabase
     .from("orders")
     .select("*")
     .eq("business_id", business.id)
@@ -32,27 +32,64 @@ export default async function TableDetailPage({
     .is("bill_id", null)
     .order("created_at", { ascending: true });
 
-  const scoped = isCounter
-    ? ordersQuery.is("table_no", null)
-    : ordersQuery.eq("table_no", tableNo as string);
+  const prevOrdersQuery = supabase
+    .from("orders")
+    .select("*")
+    .eq("business_id", business.id)
+    .order("created_at", { ascending: false })
+    .limit(30);
 
-  const [{ data: orders }, { data: menuItems }] = await Promise.all([
-    scoped,
+  const prevBillsQuery = supabase
+    .from("bills")
+    .select("*")
+    .eq("business_id", business.id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  const activeScoped = isCounter
+    ? activeOrdersQuery.is("table_no", null)
+    : activeOrdersQuery.eq("table_no", tableNo as string);
+
+  const prevOrdersScoped = isCounter
+    ? prevOrdersQuery.is("table_no", null)
+    : prevOrdersQuery.eq("table_no", tableNo as string);
+
+  const prevBillsScoped = isCounter
+    ? prevBillsQuery.is("table_no", null)
+    : prevBillsQuery.eq("table_no", tableNo as string);
+
+  const [
+    { data: orders },
+    { data: menuItems },
+    { data: previousOrders },
+    { data: previousBills },
+  ] = await Promise.all([
+    activeScoped,
     supabase
       .from("menu_items")
       .select("*")
       .eq("business_id", business.id)
       .eq("is_available", true)
       .order("name", { ascending: true }),
+    prevOrdersScoped,
+    prevBillsScoped,
   ]);
+
+  const menuBaseUrl = process.env.NEXT_PUBLIC_MENU_BASE_URL || "http://localhost:3000";
 
   return (
     <TableDetail
       businessId={business.id}
+      businessSlug={business.slug}
+      businessName={business.name}
+      businessLogoUrl={business.logo_url}
       currency={business.currency}
       tableNo={tableNo}
       tableLabel={isCounter ? "Counter" : `Table ${tableNo}`}
+      menuBaseUrl={menuBaseUrl}
       initialOrders={(orders ?? []) as Order[]}
+      previousOrders={(previousOrders ?? []) as Order[]}
+      previousBills={(previousBills ?? []) as any[]}
       menuItems={(menuItems ?? []) as MenuItem[]}
     />
   );

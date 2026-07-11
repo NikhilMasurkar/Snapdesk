@@ -13,6 +13,16 @@ import {
   type Plan,
 } from "./actions";
 import DialogModal from "./_components/DialogModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type TabId = "all" | "pending" | "approved" | "suspended" | "rejected";
 
@@ -26,7 +36,8 @@ export default function BusinessList({
   const [, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabId>("pending"); // Default to pending
+  const [activeTab, setActiveTab] = useState<TabId>("all"); // Default to all businesses
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Custom Modal configuration state
   const [modalConfig, setModalConfig] = useState<{
@@ -63,10 +74,24 @@ export default function BusinessList({
     });
   };
 
-  const pending = businesses.filter((b) => b.status === "pending");
-  const approved = businesses.filter((b) => b.status === "approved");
-  const suspended = businesses.filter((b) => b.status === "suspended");
-  const rejected = businesses.filter((b) => b.status === "rejected");
+  // Filter businesses by live search query first
+  const query = searchQuery.trim().toLowerCase();
+  const matchedBusinesses = businesses.filter((b) => {
+    if (!query) return true;
+    return (
+      b.name?.toLowerCase().includes(query) ||
+      b.owner_name?.toLowerCase().includes(query) ||
+      b.owner_email?.toLowerCase().includes(query) ||
+      b.owner_phone?.toLowerCase().includes(query) ||
+      b.city?.toLowerCase().includes(query) ||
+      b.slug?.toLowerCase().includes(query)
+    );
+  });
+
+  const pending = matchedBusinesses.filter((b) => b.status === "pending");
+  const approved = matchedBusinesses.filter((b) => b.status === "approved");
+  const suspended = matchedBusinesses.filter((b) => b.status === "suspended");
+  const rejected = matchedBusinesses.filter((b) => b.status === "rejected");
 
   const filteredBusinesses = () => {
     switch (activeTab) {
@@ -79,16 +104,16 @@ export default function BusinessList({
       case "rejected":
         return rejected;
       default:
-        return businesses;
+        return matchedBusinesses;
     }
   };
 
-  const tabList: { id: TabId; label: string; count: number; activeColor: string }[] = [
-    { id: "pending", label: "Pending Requests", count: pending.length, activeColor: "border-warning text-warning bg-warning-bg/10" },
-    { id: "approved", label: "Approved", count: approved.length, activeColor: "border-success text-success bg-success-bg/10" },
-    { id: "suspended", label: "Suspended", count: suspended.length, activeColor: "border-danger text-danger bg-danger-bg/10" },
-    { id: "rejected", label: "Rejected", count: rejected.length, activeColor: "border-muted text-muted bg-muted-bg/50" },
-    { id: "all", label: "All Businesses", count: businesses.length, activeColor: "border-primary text-primary bg-primary/5" },
+  const tabList: { id: TabId; label: string; count: number }[] = [
+    { id: "all", label: "All Businesses", count: matchedBusinesses.length },
+    { id: "pending", label: "Pending Requests", count: pending.length },
+    { id: "approved", label: "Approved", count: approved.length },
+    { id: "suspended", label: "Suspended", count: suspended.length },
+    { id: "rejected", label: "Rejected", count: rejected.length },
   ];
 
   return (
@@ -113,31 +138,67 @@ export default function BusinessList({
         </div>
       )}
 
-      {/* Tabs Layout */}
-      <div className="flex flex-wrap gap-2 border-b border-border pb-px overflow-x-auto">
+      {/* Prominent Top Search Bar */}
+      <div className="relative w-full">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+          className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+          />
+        </svg>
+        <Input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search businesses by name, email, phone number, city, or slug..."
+          className="h-auto w-full rounded-2xl bg-card pl-12 pr-10 py-3.5 text-sm font-semibold shadow-sm"
+        />
+        {searchQuery && (
+          <Button variant="ghost"
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted hover:text-foreground hover:bg-muted-bg"
+            title="Clear search"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="size-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </Button>
+        )}
+      </div>
+
+      {/* Modern Segmented Pill Tabs */}
+      <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-border bg-card p-1.5 shadow-xs w-fit">
         {tabList.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
-            <button
+            <Button variant="ghost"
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`h-auto flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
                 isActive
-                  ? `${tab.activeColor} border-current`
-                  : "border-transparent text-muted hover:text-foreground hover:bg-muted-bg/30"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted hover:text-foreground hover:bg-muted-bg/60"
               }`}
             >
-              {tab.label}
+              <span>{tab.label}</span>
               <span
                 className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
                   isActive
-                    ? "bg-foreground/10 text-current"
+                    ? "bg-white/20 text-white"
                     : "bg-muted-bg text-muted"
                 }`}
               >
                 {tab.count}
               </span>
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -145,7 +206,7 @@ export default function BusinessList({
       {/* Dynamic Queue Content */}
       <div className="space-y-4">
         {filteredBusinesses().length === 0 ? (
-          <EmptyState tab={activeTab} />
+          <EmptyState tab={activeTab} hasSearch={Boolean(query)} />
         ) : (
           filteredBusinesses().map((b) => {
             if (b.status === "pending") {
@@ -193,7 +254,19 @@ export default function BusinessList({
 }
 
 /** Component for Render Empty State */
-function EmptyState({ tab }: { tab: TabId }) {
+function EmptyState({ tab, hasSearch }: { tab: TabId; hasSearch?: boolean }) {
+  if (hasSearch) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border py-12 px-4 text-center bg-card/30">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-10 text-muted mb-3">
+          <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+        <h3 className="text-sm font-bold text-foreground">No matching businesses</h3>
+        <p className="mt-1 text-xs text-muted max-w-xs">Try searching with a different keyword or check other tabs.</p>
+      </div>
+    );
+  }
+
   const getMessage = () => {
     switch (tab) {
       case "pending":
@@ -269,63 +342,72 @@ function PendingCard({
   const [plan, setPlan] = useState<Plan>("free");
   const [tables, setTables] = useState("10");
 
+  const monogram = b.name?.[0]?.toUpperCase() || "B";
+
   return (
-    <div className="rounded-2xl border border-warning/20 bg-card p-5 shadow-sm hover:shadow-md hover:border-warning/40 transition-all">
+    <div className="rounded-2xl border border-warning/25 bg-card p-5 shadow-xs hover:shadow-md transition-all">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <Link href={`/business/${b.id}`} className="text-base font-bold text-foreground hover:text-primary transition-colors hover:underline">
-              {b.name}
-            </Link>
-            <span className="inline-flex items-center rounded-full bg-muted-bg px-2.5 py-0.5 text-[10px] font-bold uppercase text-muted">
-              {b.type}
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-warning-bg/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warning">
-              <span className="size-1.5 rounded-full bg-warning animate-pulse" />
-              Pending Review
-            </span>
-            {b.dup_warning && (
-              <span
-                className="inline-flex items-center gap-1 rounded-full bg-danger-bg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-danger"
-                title={`Phone matches existing business: ${b.dup_warning}`}
-              >
-                ⚠️ Phone matches “{b.dup_warning}”
-              </span>
-            )}
-            <span className="text-xs text-muted">
-              Applied {new Date(b.created_at).toLocaleDateString()}
-            </span>
+        <div className="flex items-start gap-4 flex-1 min-w-0">
+          {/* Business Monogram */}
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-warning-bg border border-warning/25 text-warning font-extrabold text-base">
+            {monogram}
           </div>
 
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 bg-muted-bg/30 p-4 rounded-xl border border-border/50">
-            <DetailItem label="Owner">{b.owner_name}</DetailItem>
-            <DetailItem label="Owner Email">{b.owner_email}</DetailItem>
-            <DetailItem label="Owner Phone">{b.owner_phone}</DetailItem>
-            <DetailItem label="WhatsApp">{b.whatsapp_number}</DetailItem>
-            <DetailItem label="Opening Hours">{b.opening_hours}</DetailItem>
-            <DetailItem label="GST Number">{b.gst_number}</DetailItem>
-            <DetailItem label="City">{b.city}</DetailItem>
-            <DetailItem label="Address">{[b.address, b.pincode].filter(Boolean).join(", ")}</DetailItem>
-          </dl>
-          
-          {b.tagline && (
-            <p className="mt-3 text-xs text-muted italic">
-              &ldquo;{b.tagline}&rdquo;
-            </p>
-          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <Link href={`/business/${b.id}`} className="text-base font-bold text-foreground hover:text-primary transition-colors hover:underline">
+                {b.name}
+              </Link>
+              <span className="inline-flex items-center rounded-full bg-muted-bg px-2.5 py-0.5 text-[10px] font-bold uppercase text-muted">
+                {b.type}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-warning-bg/60 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-warning">
+                <span className="size-1.5 rounded-full bg-warning animate-pulse" />
+                Pending Review
+              </span>
+              {b.dup_warning && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full bg-danger-bg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-danger"
+                  title={`Phone matches existing business: ${b.dup_warning}`}
+                >
+                  ⚠️ Phone matches “{b.dup_warning}”
+                </span>
+              )}
+              <span className="text-xs text-muted" suppressHydrationWarning>
+                Applied {b.created_at ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(b.created_at)) : "N/A"}
+              </span>
+            </div>
+
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 bg-muted-bg/30 p-4 rounded-xl border border-border/50">
+              <DetailItem label="Owner">{b.owner_name}</DetailItem>
+              <DetailItem label="Owner Email">{b.owner_email}</DetailItem>
+              <DetailItem label="Owner Phone">{b.owner_phone}</DetailItem>
+              <DetailItem label="WhatsApp">{b.whatsapp_number}</DetailItem>
+              <DetailItem label="Opening Hours">{b.opening_hours}</DetailItem>
+              <DetailItem label="GST Number">{b.gst_number}</DetailItem>
+              <DetailItem label="City">{b.city}</DetailItem>
+              <DetailItem label="Address">{[b.address, b.pincode].filter(Boolean).join(", ")}</DetailItem>
+            </dl>
+            
+            {b.tagline && (
+              <p className="mt-3 text-xs text-muted italic">
+                &ldquo;{b.tagline}&rdquo;
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="flex shrink-0 gap-2 items-center self-end md:self-start">
           {!approving && (
             <>
-              <button
+              <Button variant="ghost"
                 disabled={busy}
                 onClick={() => setApproving(true)}
-                className="rounded-xl bg-success hover:bg-success/90 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
+                className="h-auto rounded-xl bg-success hover:bg-success/90 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:shadow transition-all cursor-pointer disabled:opacity-50"
               >
                 Approve Request
-              </button>
-              <button
+              </Button>
+              <Button variant="ghost"
                 disabled={busy}
                 onClick={() => {
                   showModal({
@@ -340,10 +422,10 @@ function PendingCard({
                     },
                   });
                 }}
-                className="rounded-xl border border-danger/30 hover:border-danger/60 bg-card hover:bg-danger-bg px-4 py-2.5 text-xs font-bold text-danger transition-all cursor-pointer disabled:opacity-50"
+                className="h-auto rounded-xl border border-danger/30 hover:border-danger/60 bg-card hover:bg-danger-bg px-4 py-2.5 text-xs font-bold text-danger transition-all cursor-pointer disabled:opacity-50"
               >
                 Reject
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -352,47 +434,48 @@ function PendingCard({
       {approving && (
         <div className="mt-4 flex flex-wrap items-end gap-4 rounded-xl border border-border bg-muted-bg/50 p-4 animate-fade-in">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-muted">Select Plan Tier</label>
-            <select
-              value={plan}
-              onChange={(e) => setPlan(e.target.value as Plan)}
-              className="rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary transition-all"
-            >
-              <option value="free">Free Tier — 30 menu items</option>
-              <option value="basic">Basic Tier — Photos, 100 items</option>
-              <option value="premium">Premium Tier — All features, 500 items</option>
-            </select>
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted">Select Plan Tier</Label>
+            <Select value={plan} onValueChange={(v) => setPlan(v as Plan)}>
+              <SelectTrigger className="rounded-xl bg-card text-xs font-semibold">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="free">Free Tier — 30 menu items</SelectItem>
+                <SelectItem value="basic">Basic Tier — Photos, 100 items</SelectItem>
+                <SelectItem value="premium">Premium Tier — All features, 500 items</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-muted">Allocated Tables</label>
-            <input
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted">Allocated Tables</Label>
+            <Input
               type="number"
               min={0}
               max={200}
               value={tables}
               onChange={(e) => setTables(e.target.value)}
-              className="w-24 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary transition-all"
+              className="w-24 rounded-xl bg-card text-xs font-semibold"
             />
           </div>
 
           <div className="flex gap-2 ml-auto">
-            <button
+            <Button variant="ghost"
               disabled={busy}
               onClick={() => {
                 run(b.id, () => approveBusiness(b.id, plan, Number(tables)));
                 setApproving(false);
               }}
-              className="rounded-xl bg-success hover:bg-success/90 px-4 py-2 text-xs font-bold text-white transition-all cursor-pointer disabled:opacity-50"
+              className="h-auto rounded-xl bg-success hover:bg-success/90 px-4 py-2 text-xs font-bold text-white transition-all cursor-pointer disabled:opacity-50"
             >
               Confirm & Activate
-            </button>
-            <button
+            </Button>
+            <Button variant="ghost"
               onClick={() => setApproving(false)}
-              className="rounded-xl px-3 py-2 text-xs font-bold text-muted hover:text-foreground hover:bg-muted-bg transition-all cursor-pointer"
+              className="h-auto rounded-xl px-3 py-2 text-xs font-bold text-muted hover:text-foreground hover:bg-muted-bg transition-all cursor-pointer"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -449,74 +532,82 @@ function RegularCard({
   };
 
   const style = getStatusConfig();
+  const monogram = b.name?.[0]?.toUpperCase() || "B";
 
   return (
-    <div className={`rounded-2xl border ${style.border} bg-card p-5 shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4`}>
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2 mb-1.5">
-          <Link href={`/business/${b.id}`} className="text-base font-bold text-foreground hover:text-primary transition-colors hover:underline">
-            {b.name}
-          </Link>
-          <span className="rounded-full bg-muted-bg px-2 py-0.5 text-[9px] font-bold uppercase text-muted">
-            {b.type}
-          </span>
-          {b.is_demo && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold uppercase text-primary">
-              Demo
+    <div className={`rounded-2xl border ${style.border} bg-card p-5 shadow-xs hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4`}>
+      <div className="flex items-start gap-4 min-w-0">
+        {/* Monogram */}
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary font-extrabold text-base">
+          {monogram}
+        </div>
+
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+            <Link href={`/business/${b.id}`} className="text-base font-bold text-foreground hover:text-primary transition-colors hover:underline">
+              {b.name}
+            </Link>
+            <span className="rounded-full bg-muted-bg px-2 py-0.5 text-[9px] font-bold uppercase text-muted">
+              {b.type}
             </span>
-          )}
-          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${style.badge}`}>
-            <span className={`size-1.5 rounded-full ${style.dot}`} />
-            {style.label}
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-          <span>{b.owner_email ?? "No Linked Account"}</span>
-          <span>·</span>
-          <span>WA: {b.whatsapp_number}</span>
-          <span>·</span>
-          {menuBaseUrl ? (
-            <a
-              href={`${menuBaseUrl}/m/${b.slug}`}
-              target="_blank"
-              rel="noreferrer"
-              className="text-primary hover:underline font-medium"
-            >
-              /m/{b.slug}
-            </a>
-          ) : (
-            <span>/m/{b.slug}</span>
-          )}
-          {b.city && (
-            <>
-              <span>·</span>
-              <span>{b.city}</span>
-            </>
-          )}
-        </div>
-
-        {b.admin_notes && (
-          <div className="mt-3 flex items-start gap-1.5 rounded-lg bg-muted-bg/30 p-2 border border-border/50 max-w-xl">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="size-4 text-muted shrink-0 mt-0.5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"
-              />
-            </svg>
-            <p className="text-xs text-muted leading-snug">
-              <span className="font-bold">Admin note:</span> &ldquo;{b.admin_notes}&rdquo;
-            </p>
+            {b.is_demo && (
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold uppercase text-primary">
+                Demo
+              </span>
+            )}
+            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${style.badge}`}>
+              <span className={`size-1.5 rounded-full ${style.dot}`} />
+              {style.label}
+            </span>
           </div>
-        )}
+
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+            <span>{b.owner_email ?? "No Linked Account"}</span>
+            <span>·</span>
+            <span>WA: {b.whatsapp_number}</span>
+            <span>·</span>
+            {menuBaseUrl ? (
+              <a
+                href={`${menuBaseUrl}/m/${b.slug}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary hover:underline font-medium"
+              >
+                /m/{b.slug}
+              </a>
+            ) : (
+              <span>/m/{b.slug}</span>
+            )}
+            {b.city && (
+              <>
+                <span>·</span>
+                <span>{b.city}</span>
+              </>
+            )}
+          </div>
+
+          {b.admin_notes && (
+            <div className="mt-3 flex items-start gap-1.5 rounded-lg bg-muted-bg/30 p-2 border border-border/50 max-w-xl">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="size-4 text-muted shrink-0 mt-0.5"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z"
+                />
+              </svg>
+              <p className="text-xs text-muted leading-snug">
+                <span className="font-bold">Admin note:</span> &ldquo;{b.admin_notes}&rdquo;
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
@@ -525,7 +616,7 @@ function RegularCard({
             <span className="rounded-full bg-muted-bg border border-border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted">
               {b.plan} · {b.table_count} tables
             </span>
-            <button
+            <Button variant="ghost"
               disabled={busy}
               onClick={() => {
                 showModal({
@@ -540,25 +631,25 @@ function RegularCard({
                   },
                 });
               }}
-              className="rounded-xl border border-danger/30 hover:border-danger bg-card hover:bg-danger-bg px-4 py-2.5 text-xs font-bold text-danger transition-all cursor-pointer disabled:opacity-50"
+              className="h-auto rounded-xl border border-danger/30 hover:border-danger bg-card hover:bg-danger-bg px-4 py-2.5 text-xs font-bold text-danger transition-all cursor-pointer disabled:opacity-50"
             >
               Suspend
-            </button>
+            </Button>
           </>
         )}
 
         {b.status === "suspended" && (
-          <button
+          <Button variant="ghost"
             disabled={busy}
             onClick={() => run(b.id, () => reactivateBusiness(b.id))}
-            className="rounded-xl bg-success hover:bg-success/90 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50"
+            className="h-auto rounded-xl bg-success hover:bg-success/90 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:shadow transition-all cursor-pointer disabled:opacity-50"
           >
             Reactivate Account
-          </button>
+          </Button>
         )}
 
         {b.status === "rejected" && (
-          <button
+          <Button variant="ghost"
             disabled={busy}
             onClick={() => {
               showModal({
@@ -572,10 +663,10 @@ function RegularCard({
                 },
               });
             }}
-            className="rounded-xl border border-border hover:border-danger bg-card hover:bg-danger-bg px-4 py-2.5 text-xs font-bold text-muted hover:text-danger transition-all cursor-pointer disabled:opacity-50"
+            className="h-auto rounded-xl border border-border hover:border-danger bg-card hover:bg-danger-bg px-4 py-2.5 text-xs font-bold text-muted hover:text-danger transition-all cursor-pointer disabled:opacity-50"
           >
             Delete Permanently
-          </button>
+          </Button>
         )}
       </div>
     </div>

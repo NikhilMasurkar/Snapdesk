@@ -14,10 +14,19 @@ export const PLATFORM_TZ = "Asia/Kolkata";
 
 /** Y/M/D of a timestamp as seen in `tz`. */
 function tzParts(date: Date, tz: string): { y: number; m: number; d: number } {
-  const [y, m, d] = date
-    .toLocaleDateString("en-CA", { timeZone: tz }) // en-CA = YYYY-MM-DD
-    .split("-")
-    .map(Number);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(date);
+
+  let y = 0, m = 0, d = 0;
+  for (const p of parts) {
+    if (p.type === "year") y = Number(p.value);
+    if (p.type === "month") m = Number(p.value);
+    if (p.type === "day") d = Number(p.value);
+  }
   return { y, m, d };
 }
 
@@ -83,14 +92,16 @@ export function dailySeries<T>(
 
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now - i * 864e5);
-    const key = d.toLocaleDateString("en-CA", { timeZone: tz }); // YYYY-MM-DD in tz
-    const [, mm, dd] = key.split("-").map(Number);
+    const { y, m, d: dd } = tzParts(d, tz);
+    const key = `${y}-${String(m).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
     buckets.set(key, 0);
-    out.push({ key, label: `${dd}/${mm}`, value: 0 });
+    out.push({ key, label: `${dd}/${m}`, value: 0 });
   }
 
   for (const row of rows) {
-    const key = new Date(createdAt(row)).toLocaleDateString("en-CA", { timeZone: tz });
+    const d = new Date(createdAt(row));
+    const { y, m, d: dd } = tzParts(d, tz);
+    const key = `${y}-${String(m).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
     if (buckets.has(key)) buckets.set(key, buckets.get(key)! + valueFn(row));
   }
   return out.map((o) => ({ label: o.label, value: buckets.get(o.key) ?? 0 }));

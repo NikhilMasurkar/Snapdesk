@@ -98,6 +98,41 @@ export type Page = {
   updated_at: string;
 };
 
+export type LeadTemperature = "hot" | "warm" | "cold" | "not_answering";
+
+export type Lead = {
+  id: string;
+  lead_type: string; // 'internal' for hand-added leads
+  business_name: string;
+  contact_name: string | null;
+  phone: string;
+  address: string | null;
+  google_maps_url: string | null;
+  source: string | null;
+  temperature: LeadTemperature | null;
+  status: "open" | "converted" | "dead";
+  status_reason: string | null;
+  assigned_to: string | null;
+  callback_at: string | null;
+  converted_business_id: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  /** Joined in app/leads/page.tsx from auth.users. */
+  assigned_email?: string;
+  remarks?: LeadRemark[];
+};
+
+export type LeadRemark = {
+  id: string;
+  lead_id: string;
+  author_id: string;
+  text: string;
+  created_at: string;
+  /** Joined in app/leads/page.tsx from auth.users. */
+  author_email?: string;
+};
+
 export type AuditRow = {
   id: number;
   admin_user_id: string;

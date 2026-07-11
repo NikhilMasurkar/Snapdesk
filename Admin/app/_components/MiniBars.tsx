@@ -71,23 +71,21 @@ export default function MiniBars({
                 rx={1}
                 className="transition-all duration-300 hover:opacity-100 opacity-90 cursor-pointer"
               >
-                <title>
-                  {d.label}: {format(d.value)}
-                </title>
+                <title suppressHydrationWarning>{`${d.label}: ${format(d.value)}`}</title>
               </rect>
             );
           })}
         </svg>
       </div>
 
-      <div className="mt-3 flex justify-between border-t border-border/60 pt-2 text-[10px] text-muted">
+      <div suppressHydrationWarning className="mt-3 flex justify-between border-t border-border/60 pt-2 text-[10px] text-muted">
         <span>{data[0].label}</span>
         <span className="font-semibold text-foreground/80">
           Peak {peak.label}: <span className="text-primary font-bold">{format(peak.value)}</span>
         </span>
         <span>{data[data.length - 1].label}</span>
       </div>
-      <p className="mt-1 text-center text-[10px] font-semibold text-muted">
+      <p suppressHydrationWarning className="mt-1 text-center text-[10px] font-semibold text-muted">
         Total: <span className="text-foreground">{format(total)}</span>
       </p>
     </div>

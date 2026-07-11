@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAdmin } from "@/lib/admin";
 import { createServiceClient } from "@/lib/service";
-import { canAssignRoles, isSuperAdmin, type Role } from "@/lib/roles";
+import { canAssignRoles, canSalesMember, isSuperAdmin, type Role } from "@/lib/roles";
 import TeamManager from "./TeamManager";
+import AdminShell from "../_components/AdminShell";
 
 export default async function TeamPage() {
   const { user, roles } = await getAdmin();
@@ -29,30 +29,25 @@ export default async function TeamPage() {
     .sort((a, b) => a.email.localeCompare(b.email));
 
   return (
-    <main className="min-h-screen bg-background text-foreground transition-colors duration-200 pb-16">
-      <header className="sticky top-0 z-10 border-b border-border bg-card/85 backdrop-blur-md">
-        <div className="flex w-full items-center gap-4 px-6 py-4 lg:px-8">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-muted hover:text-foreground transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="size-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-            </svg>
-            Dashboard
-          </Link>
-          <div className="h-6 w-px bg-border" />
-          <h1 className="text-base font-bold tracking-tight text-foreground">Team & Roles</h1>
+    <AdminShell
+      userEmail={user.email ?? ""}
+      isSuperAdmin={isSuperAdmin(roles)}
+      showSales={canSalesMember(roles)}
+      initialTab="role-config"
+    >
+      <div className="flex w-full flex-col px-6 py-8 lg:px-8">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold tracking-tight text-foreground">Employee — Role Config</h1>
+          <p className="text-xs text-muted mt-1">
+            Assign and manage administrator & employee roles across the platform.
+          </p>
         </div>
-      </header>
-
-      <div className="mx-auto w-full max-w-3xl px-6 py-8 lg:px-8">
         <TeamManager
           members={members}
           currentUserId={user.id}
           callerIsSuper={isSuperAdmin(roles)}
         />
       </div>
-    </main>
+    </AdminShell>
   );
 }

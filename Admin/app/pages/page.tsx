@@ -2,13 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAdmin } from "@/lib/admin";
 import { createServiceClient } from "@/lib/service";
+import { canSalesMember, isSuperAdmin } from "@/lib/roles";
 import type { Page } from "@/lib/types";
+import AdminShell from "../_components/AdminShell";
 
 const MENU_BASE_URL =
   process.env.NEXT_PUBLIC_MENU_BASE_URL ?? "https://snapdesk-tan.vercel.app";
 
 export default async function PagesListPage() {
-  const { isAdmin } = await getAdmin();
+  const { user, isAdmin, roles } = await getAdmin();
   if (!isAdmin) notFound();
 
   const service = createServiceClient();
@@ -19,42 +21,29 @@ export default async function PagesListPage() {
   const pages = (data ?? []) as Page[];
 
   return (
-    <main className="min-h-screen bg-background text-foreground transition-colors duration-200 pb-16">
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b border-border bg-card/85 backdrop-blur-md">
-        <div className="flex w-full items-center justify-between px-6 py-4 lg:px-8">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-muted hover:text-foreground transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="size-4">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-              </svg>
-              Dashboard
-            </Link>
-            <div className="h-6 w-px bg-border" />
-            <h1 className="text-base font-bold tracking-tight text-foreground">Content Pages</h1>
+    <AdminShell
+      userEmail={user.email ?? ""}
+      isSuperAdmin={isSuperAdmin(roles)}
+      showSales={canSalesMember(roles)}
+      initialTab="pages"
+    >
+      <div className="flex w-full flex-col px-6 py-8 lg:px-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Content Pages</h1>
+            <p className="text-xs text-muted mt-1 leading-relaxed">
+              Create and edit content pages (e.g. privacy policies, terms of service, about sections) for your public menu site.
+            </p>
           </div>
           <Link
             href="/pages/new"
-            className="inline-flex items-center gap-1 rounded-xl bg-primary hover:bg-primary-hover px-4 py-2 text-xs font-bold text-primary-foreground shadow-sm hover:shadow-primary/20 transition-all"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-primary hover:bg-primary-hover px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:shadow-primary/20 transition-all"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="size-3.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
             New Page
           </Link>
-        </div>
-      </header>
-
-      <div className="flex w-full flex-col px-6 py-8 lg:px-8">
-        <div className="mb-6">
-          <h2 className="text-lg font-bold text-foreground">CMS & Landing Pages</h2>
-          <p className="text-xs text-muted mt-1 leading-relaxed">
-            Create and edit content pages (e.g. privacy policies, terms of service, about sections) for your public menu site. 
-            Pages are rendered dynamically at <code className="rounded bg-muted-bg px-1.5 py-0.5 font-mono text-[10px] text-foreground font-semibold">/p/&lt;slug&gt;</code>.
-          </p>
         </div>
 
         {pages.length === 0 ? (
@@ -110,8 +99,8 @@ export default async function PagesListPage() {
                 </div>
 
                 <div className="flex items-center justify-between border-t border-border/60 pt-4 mt-2">
-                  <span className="text-[10px] text-muted">
-                    Updated {new Date(p.updated_at).toLocaleDateString()}
+                  <span className="text-[10px] text-muted" suppressHydrationWarning>
+                    Updated {p.updated_at ? new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(p.updated_at)) : "N/A"}
                   </span>
                   
                   <div className="flex items-center gap-3">
@@ -141,6 +130,6 @@ export default async function PagesListPage() {
           </div>
         )}
       </div>
-    </main>
+    </AdminShell>
   );
 }
