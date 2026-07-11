@@ -15,6 +15,37 @@ import {
   saveCart,
 } from "@/lib/cart";
 import { placeOrder } from "./actions";
+import { getSupabase } from "@/lib/supabase";
+
+type OrderStatus = "pending" | "approved" | "rejected" | "billed" | "cancelled";
+
+const STATUS_UI: Record<OrderStatus, { icon: string; text: string; cls: string }> = {
+  pending: {
+    icon: "⏳",
+    text: "Waiting for the restaurant to accept your order…",
+    cls: "bg-amber-50 text-amber-800",
+  },
+  approved: {
+    icon: "👨‍🍳",
+    text: "Order accepted — the kitchen is preparing it!",
+    cls: "bg-emerald-50 text-emerald-800",
+  },
+  billed: {
+    icon: "🧾",
+    text: "Order completed. Thanks for visiting!",
+    cls: "bg-emerald-50 text-emerald-800",
+  },
+  rejected: {
+    icon: "❌",
+    text: "Sorry, the restaurant couldn't take this order.",
+    cls: "bg-rose-50 text-rose-800",
+  },
+  cancelled: {
+    icon: "❌",
+    text: "This order was cancelled.",
+    cls: "bg-rose-50 text-rose-800",
+  },
+};
 
 type Props = {
   slug: string;
@@ -57,6 +88,38 @@ export default function MenuClient({
   const [query, setQuery] = useState("");
   const [placing, setPlacing] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [orderStatus, setOrderStatus] = useState<OrderStatus>("pending");
+  const [statusReason, setStatusReason] = useState<string | null>(null);
+
+  // Poll the order status while the banner is visible. anon can't select from
+  // orders (RLS), so this goes through the get_order_status definer RPC.
+  useEffect(() => {
+    if (!sent || !sentShortId) return;
+    if (orderStatus === "rejected" || orderStatus === "cancelled" || orderStatus === "billed")
+      return; // final states — stop polling
+
+    let stopped = false;
+    const check = async () => {
+      const { data } = await getSupabase().rpc("get_order_status", {
+        p_business_id: businessId,
+        p_short_id: sentShortId,
+      });
+      const row = (data as { status: OrderStatus; status_reason: string | null }[] | null)?.[0];
+      if (!stopped && row) {
+        setOrderStatus(row.status);
+        setStatusReason(row.status_reason);
+      }
+    };
+    check();
+    const id = setInterval(check, 10_000);
+    // ponytail: stop after 30 min — nobody watches a menu page longer
+    const cutoff = setTimeout(() => clearInterval(id), 30 * 60 * 1000);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+      clearTimeout(cutoff);
+    };
+  }, [sent, sentShortId, orderStatus, businessId]);
 
   // Stable idempotency key for the current cart. Reused across checkout
   // retries/double-taps (the DB dedupes on it) and reset after a send.
@@ -171,6 +234,8 @@ export default function MenuClient({
     setNote("");
     setDrawerOpen(false);
     setSentShortId(shortId);
+    setOrderStatus("pending");
+    setStatusReason(null);
     setSent(true);
   };
 
@@ -234,25 +299,33 @@ export default function MenuClient({
         )}
       </header>
 
-      {/* Order-sent banner */}
+      {/* Live order-status banner */}
       {sent && (
-        <div className="mx-4 mb-2 flex items-start gap-2 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
-          <span aria-hidden>✅</span>
-          <p className="flex-1">
-            Order placed — the restaurant has received it.
-            {sentShortId && (
-              <>
-                {" "}
-                Your order ID:{" "}
-                <span className="font-bold">#{sentShortId}</span>.
-              </>
+        <div
+          className={`mx-4 mb-2 flex items-start gap-2 rounded-xl p-3 text-sm ${STATUS_UI[orderStatus].cls}`}
+        >
+          <span aria-hidden>{STATUS_UI[orderStatus].icon}</span>
+          <div className="flex-1">
+            <p>
+              {STATUS_UI[orderStatus].text}
+              {sentShortId && (
+                <>
+                  {" "}
+                  Order ID: <span className="font-bold">#{sentShortId}</span>
+                </>
+              )}
+            </p>
+            {statusReason &&
+              (orderStatus === "rejected" || orderStatus === "cancelled") && (
+                <p className="mt-0.5 text-xs opacity-80">Reason: {statusReason}</p>
+              )}
+            {orderStatus === "pending" && (
+              <p className="mt-0.5 text-xs opacity-70">
+                This updates automatically — keep the page open.
+              </p>
             )}
-          </p>
-          <button
-            onClick={() => setSent(false)}
-            aria-label="Dismiss"
-            className="text-emerald-700"
-          >
+          </div>
+          <button onClick={() => setSent(false)} aria-label="Dismiss">
             ✕
           </button>
         </div>

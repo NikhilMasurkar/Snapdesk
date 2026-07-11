@@ -170,22 +170,45 @@ export default function LeadsManager({
   const [pending, startTransition] = useTransition();
 
   const now = Date.now();
+  const endOfToday = new Date();
+  endOfToday.setHours(23, 59, 59, 999);
+  const dueToday = (l: Lead) =>
+    l.status === "open" &&
+    !!l.callback_at &&
+    Date.parse(l.callback_at) <= endOfToday.getTime();
+
   const counts = useMemo(() => {
     const open = leads.filter((l) => l.status === "open");
     return {
       open: open.length,
       followup: open.filter((l) => l.callback_at).length,
+      dueToday: open.filter(dueToday).length,
       unassigned: open.filter((l) => !l.assigned_to).length,
       closed: leads.length - open.length,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leads]);
 
-  const visible = leads.filter((l) => {
-    if (tab === "open") return l.status === "open";
-    if (tab === "followup") return l.status === "open" && l.callback_at;
-    if (tab === "unassigned") return l.status === "open" && !l.assigned_to;
-    return l.status !== "open";
-  });
+  // Sales workflow: if callbacks are due, land on the Follow Up tab.
+  const [autoTabbed, setAutoTabbed] = useState(false);
+  if (!autoTabbed && counts.dueToday > 0) {
+    setAutoTabbed(true);
+    setTab("followup");
+  }
+
+  const visible = leads
+    .filter((l) => {
+      if (tab === "open") return l.status === "open";
+      if (tab === "followup") return l.status === "open" && l.callback_at;
+      if (tab === "unassigned") return l.status === "open" && !l.assigned_to;
+      return l.status !== "open";
+    })
+    .sort((a, b) => {
+      // Follow Up: earliest callback first (overdue on top).
+      if (tab === "followup")
+        return Date.parse(a.callback_at ?? "") - Date.parse(b.callback_at ?? "");
+      return Date.parse(b.created_at) - Date.parse(a.created_at);
+    });
 
   const selectedLead = useMemo(
     () => leads.find((l) => l.id === selectedLeadId) ?? null,
@@ -243,6 +266,11 @@ export default function LeadsManager({
               <span className="ml-1 rounded-full px-1.5 py-0.5 text-[10px] opacity-85">
                 ({t.count})
               </span>
+              {t.key === "followup" && counts.dueToday > 0 && (
+                <span className="ml-1 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-extrabold text-white">
+                  {counts.dueToday} due
+                </span>
+              )}
             </Button>
           ))}
         </div>

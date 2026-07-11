@@ -70,20 +70,82 @@ export default async function DashboardLayout({
   // dashboard; everyone else gets the matching lock screen. The public menu
   // is gated the same way at the database (RLS requires status='approved').
   if (business.status === "pending") {
+    const steps: { label: string; detail: string; state: "done" | "now" | "next" }[] = [
+      {
+        label: "Application submitted",
+        detail: `${business.name} is registered with Snapdesk.`,
+        state: "done",
+      },
+      {
+        label: "Under review",
+        detail: "Our team verifies your details — usually within 24 hours.",
+        state: "now",
+      },
+      {
+        label: "Approval & setup",
+        detail: "You get full dashboard access: add your menu, tables, and QR codes.",
+        state: "next",
+      },
+      {
+        label: "Go live",
+        detail: "Print your table QRs and start taking orders.",
+        state: "next",
+      },
+    ];
     return (
-      <LockScreen
-        email={user.email}
-        title="Application under review"
-        icon={
-          <div className="flex size-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
-            <Clock className="size-6" />
-          </div>
-        }
-      >
-        <strong>{business.name}</strong> has been submitted and is being
-        reviewed by Snapdesk. We&apos;ll approve it shortly — you&apos;ll get
-        full dashboard access as soon as it&apos;s done.
-      </LockScreen>
+      <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 py-16 bg-muted/20">
+        <div className="flex size-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+          <Clock className="size-6" />
+        </div>
+        <div className="text-center">
+          <h1 className="text-xl font-bold tracking-tight">Application under review</h1>
+          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+            <strong>{business.name}</strong> has been submitted. Here&apos;s what
+            happens next:
+          </p>
+        </div>
+
+        <ol className="w-full max-w-sm space-y-0">
+          {steps.map((s, i) => (
+            <li key={s.label} className="relative flex gap-3 pb-5 last:pb-0">
+              {i < steps.length - 1 && (
+                <span className="absolute left-[11px] top-6 h-full w-px bg-border" aria-hidden />
+              )}
+              <span
+                className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                  s.state === "done"
+                    ? "bg-emerald-500 text-white"
+                    : s.state === "now"
+                      ? "bg-amber-500 text-white animate-pulse"
+                      : "border bg-background text-muted-foreground"
+                }`}
+              >
+                {s.state === "done" ? "✓" : i + 1}
+              </span>
+              <div>
+                <p className="text-sm font-semibold">{s.label}</p>
+                <p className="text-xs text-muted-foreground">{s.detail}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div className="flex gap-2">
+          <Button variant="default" size="sm" asChild>
+            <a href={`mailto:${SUPPORT_EMAIL}`}>
+              <Mail className="mr-2 size-4" /> Contact support
+            </a>
+          </Button>
+          <form action={logout}>
+            <Button variant="outline" size="sm">
+              <LogOut className="mr-2 size-4" /> Log out
+            </Button>
+          </form>
+        </div>
+        {user.email && (
+          <p className="text-xs text-muted-foreground/80">Signed in as {user.email}</p>
+        )}
+      </main>
     );
   }
 

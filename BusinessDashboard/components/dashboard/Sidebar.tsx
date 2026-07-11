@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ChefHat,
   ChevronsUpDown,
   ExternalLink,
   LayoutGrid,
@@ -64,7 +65,11 @@ export default function Sidebar({
       : []),
     // Orders history: relevant wherever orders happen (customer or staff).
     ...(features.ordering_enabled || features.tables_enabled
-      ? [{ href: "/dashboard/orders", label: "Orders", icon: Receipt, badge: null }]
+      ? [
+          { href: "/dashboard/orders", label: "Orders", icon: Receipt, badge: null },
+          // Web KDS: open on a kitchen tablet, hit Fullscreen.
+          { href: "/dashboard/kitchen", label: "Kitchen", icon: ChefHat, badge: null },
+        ]
       : []),
     { href: "/dashboard/menu", label: "Menu", icon: UtensilsCrossed, badge: null },
     // Reviews hidden when testimonials are disabled for this plan.
